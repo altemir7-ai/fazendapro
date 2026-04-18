@@ -13,14 +13,14 @@
 <link rel="stylesheet" href="/css/app.css"/>
 </head>
 <body>
-
 <div id="toast" class="toast"></div>
 
 <!-- ═══ LOGIN ═══ -->
 <div id="screen-login" class="login-screen">
   <div class="login-card">
     <div class="login-logo">FazendaPro</div>
-    <div class="login-tagline">Gestão de gado com suporte offline</div>
+    <div class="login-nome-fazenda" id="owner-fazenda-nome">Minha Fazenda</div>
+    <div class="login-tagline">Gestão de gado · Nelore · Corte</div>
     <div class="role-switch">
       <button class="role-btn active" onclick="setLoginRole('owner',this)">Proprietário</button>
       <button class="role-btn" onclick="setLoginRole('worker',this)">Vaqueiro</button>
@@ -42,7 +42,7 @@
 <div id="screen-owner" class="hidden">
   <div class="topbar">
     <div class="topbar-brand">
-      <div class="topbar-logo">FazendaPro</div>
+      <div class="topbar-logo" id="topbar-fazenda-nome">FazendaPro</div>
       <div class="topbar-sub">Painel do proprietário</div>
     </div>
     <div class="topbar-right">
@@ -50,13 +50,9 @@
       <button class="btn-logout" onclick="logout()">Sair</button>
     </div>
   </div>
-
   <div id="status-bar" class="status-bar online">
-    <div style="display:flex;align-items:center">
-      <div id="status-dot" class="status-dot dot-green"></div>
-      <span id="status-txt">Online</span>
-    </div>
-    <span id="pending-badge" class="pending-badge" style="display:none"></span>
+    <div style="display:flex;align-items:center"><div class="status-dot dot-green"></div><span class="status-txt">Online</span></div>
+    <span class="pending-badge" style="display:none"></span>
   </div>
 
   <div style="max-width:700px;margin:0 auto">
@@ -64,13 +60,17 @@
     <!-- PAINEL -->
     <div id="op-painel" class="page owner-page active">
       <div class="metric-row">
-        <div class="metric-card"><div class="metric-lbl">Animais</div><div class="metric-val" id="dash-animais">—</div></div>
+        <div class="metric-card accent"><div class="metric-lbl">Animais ativos</div><div class="metric-val" id="dash-animais">—</div></div>
+        <div class="metric-card"><div class="metric-lbl">Nascimentos (mês)</div><div class="metric-val" id="dash-nascimentos">—</div></div>
+      </div>
+      <div class="metric-row-3">
+        <div class="metric-card"><div class="metric-lbl">Gestantes</div><div class="metric-val" id="dash-gestantes">—</div></div>
+        <div class="metric-card"><div class="metric-lbl">Saúde vencida</div><div class="metric-val" id="dash-saude">—</div></div>
         <div class="metric-card"><div class="metric-lbl">Vaqueiros</div><div class="metric-val" id="dash-vaqueiros">—</div></div>
       </div>
-      <div class="metric-row">
-        <div class="metric-card"><div class="metric-lbl">Saúde vencida</div><div class="metric-val" id="dash-saude">—</div></div>
-        <div class="metric-card"><div class="metric-lbl">Saldo</div><div class="metric-val" style="font-size:18px" id="dash-saldo">—</div></div>
-      </div>
+      <div class="metric-card" style="margin-bottom:1rem"><div class="metric-lbl">Saldo financeiro</div><div class="metric-val" id="dash-saldo">—</div></div>
+      <div class="section-title">Alertas</div>
+      <div id="dash-alerts"></div>
       <div class="section-title">Últimas atividades</div>
       <div class="card"><div id="dash-feed"></div></div>
     </div>
@@ -81,9 +81,21 @@
       <div class="card"><div id="feed-list"></div></div>
     </div>
 
-    <!-- ANIMAIS -->
-    <div id="op-animais" class="page owner-page">
-      <div class="section-title">Rebanho</div>
+    <!-- REBANHO -->
+    <div id="op-rebanho" class="page owner-page">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+        <div class="section-title" style="margin:0">Rebanho</div>
+        <span id="rebanho-count" style="font-size:12px;color:#888"></span>
+      </div>
+      <input type="search" class="search-input" placeholder="Buscar por brinco, nome ou raça..." oninput="buscarRebanho(this.value)"/>
+      <div class="filter-row">
+        <button class="filter-btn filter-btn-rebanho active" onclick="filtrarRebanho('todos',this)">Todos</button>
+        <button class="filter-btn filter-btn-rebanho" onclick="filtrarRebanho('Vaca',this)">Vacas</button>
+        <button class="filter-btn filter-btn-rebanho" onclick="filtrarRebanho('Touro',this)">Touros</button>
+        <button class="filter-btn filter-btn-rebanho" onclick="filtrarRebanho('Novilha',this)">Novilhas</button>
+        <button class="filter-btn filter-btn-rebanho" onclick="filtrarRebanho('Bezerro',this)">Bezerros</button>
+        <button class="filter-btn filter-btn-rebanho" onclick="filtrarRebanho('Bezerra',this)">Bezerras</button>
+      </div>
       <div class="card"><div id="animais-list"></div></div>
     </div>
 
@@ -93,57 +105,110 @@
       <div class="card"><div id="saude-list"></div></div>
     </div>
 
+    <!-- FINANCEIRO -->
+    <div id="op-financeiro" class="page owner-page">
+      <div class="metric-row-3" style="margin-bottom:.75rem">
+        <div class="metric-card"><div class="metric-lbl">Entradas</div><div class="metric-val" style="color:#0F6E56;font-size:16px" id="fin-ent">—</div></div>
+        <div class="metric-card"><div class="metric-lbl">Saídas</div><div class="metric-val" style="color:#dc2626;font-size:16px" id="fin-sai">—</div></div>
+        <div class="metric-card"><div class="metric-lbl">Saldo</div><div class="metric-val" style="font-size:16px" id="fin-sal">—</div></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+        <div class="section-title" style="margin:0">Lançamentos</div>
+        <button class="btn btn-sm btn-outline" onclick="openSheet('sheet-fin')">+ Lançar</button>
+      </div>
+      <div class="card"><div id="fin-list"></div></div>
+    </div>
+
     <!-- VAQUEIROS -->
     <div id="op-vaqueiros" class="page owner-page">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
-        <div>
-          <div class="section-title" style="margin:0">Vaqueiros</div>
-          <div style="font-size:12px;color:#888;margin-top:2px" id="vaq-counter">—</div>
-        </div>
-        <button class="btn btn-sm btn-primary" style="background:#0F6E56;color:#fff;border-color:#0F6E56;white-space:nowrap" onclick="showAddWorker()">+ Adicionar</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.25rem">
+        <div><div class="section-title" style="margin:0">Vaqueiros</div><div style="font-size:12px;color:#888;margin-top:2px" id="vaq-counter">—</div></div>
+        <button class="btn btn-sm btn-primary" style="background:#0F6E56;color:#fff;border-color:#0F6E56" onclick="showAddWorker()">+ Adicionar</button>
       </div>
-
-      <div style="margin-bottom:.75rem">
-        <input
-          type="search"
-          placeholder="Buscar por nome, código ou telefone..."
-          oninput="buscarVaqueiros(this.value)"
-          style="width:100%;padding:10px 14px;border:1.5px solid #e8e6e0;border-radius:10px;font-size:14px;outline:none;background:#fff;color:#1a1a1a"
-        />
+      <input type="search" class="search-input" style="margin-top:.75rem" placeholder="Buscar por nome, código ou telefone..." oninput="buscarVaqueiros(this.value)"/>
+      <div class="filter-row">
+        <button class="filter-btn vaq-filter-btn active" onclick="filtrarVaqueiros('todos',this)">Todos</button>
+        <button class="filter-btn vaq-filter-btn" onclick="filtrarVaqueiros('ativos',this)">Ativos</button>
+        <button class="filter-btn vaq-filter-btn" onclick="filtrarVaqueiros('inativos',this)">Desativados</button>
       </div>
-
-      <div style="display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap">
-        <button class="btn btn-sm vaq-filter-btn active" onclick="filtrarVaqueiros('todos',this)">Todos</button>
-        <button class="btn btn-sm vaq-filter-btn" onclick="filtrarVaqueiros('ativos',this)">Ativos</button>
-        <button class="btn btn-sm vaq-filter-btn" onclick="filtrarVaqueiros('inativos',this)">Desativados</button>
-      </div>
-
       <div id="vaqueiros-list"></div>
+    </div>
+
+    <!-- RELATÓRIOS -->
+    <div id="op-relatorios" class="page owner-page">
+      <div class="section-title">Exportar dados</div>
+      <div class="rel-card" onclick="baixarPDF()">
+        <div class="rel-icon" style="background:#fee2e2">📄</div>
+        <div><div style="font-weight:700;font-size:14px">Relatório completo em PDF</div><div style="font-size:12px;color:#888;margin-top:3px">Rebanho, nascimentos, saúde e financeiro</div></div>
+      </div>
+      <div class="section-title">Exportar para Excel</div>
+      <div class="rel-card" onclick="baixarCSV('animais')"><div class="rel-icon" style="background:#d1fae5">🐄</div><div><div style="font-weight:700;font-size:14px">Rebanho (.csv)</div><div style="font-size:12px;color:#888;margin-top:3px">Todos os animais ativos</div></div></div>
+      <div class="rel-card" onclick="baixarCSV('nascimentos')"><div class="rel-icon" style="background:#fce7f3">🐣</div><div><div style="font-weight:700;font-size:14px">Nascimentos (.csv)</div><div style="font-size:12px;color:#888;margin-top:3px">Histórico completo de nascimentos</div></div></div>
+      <div class="rel-card" onclick="baixarCSV('saude')"><div class="rel-icon" style="background:#fef3c7">💉</div><div><div style="font-weight:700;font-size:14px">Saúde (.csv)</div><div style="font-size:12px;color:#888;margin-top:3px">Vacinas, tratamentos e exames</div></div></div>
+      <div class="rel-card" onclick="baixarCSV('pesagens')"><div class="rel-icon" style="background:#dbeafe">⚖️</div><div><div style="font-weight:700;font-size:14px">Pesagens (.csv)</div><div style="font-size:12px;color:#888;margin-top:3px">Histórico de pesos</div></div></div>
+      <div class="rel-card" onclick="baixarCSV('financeiro')"><div class="rel-icon" style="background:#f3f4f6">💵</div><div><div style="font-weight:700;font-size:14px">Financeiro (.csv)</div><div style="font-size:12px;color:#888;margin-top:3px">Entradas e saídas</div></div></div>
+    </div>
+
+    <!-- CONFIGURAÇÕES -->
+    <div id="op-config" class="page owner-page">
+      <div class="section-title">Dados da fazenda</div>
+      <div class="card">
+        <div class="fg" style="margin-bottom:12px"><label>Nome da fazenda</label><input id="cfg-fazenda-nome" placeholder="ex: Fazenda São João"/></div>
+        <div class="form-grid">
+          <div class="fg"><label>Foco da criação</label><select id="cfg-foco"><option>Corte</option><option>Leite</option><option>Misto</option></select></div>
+          <div class="fg"><label>Raça principal</label><select id="cfg-raca"><option>Nelore</option><option>Girolando</option><option>Brahman</option><option>Gir</option><option>Mista</option></select></div>
+        </div>
+        <button class="btn btn-primary" onclick="salvarConfig()">Salvar configurações</button>
+      </div>
+
+      <div class="section-title">Alertas por WhatsApp</div>
+      <div class="card">
+        <div class="fg" style="margin-bottom:12px"><label>Número WhatsApp (com código do país)</label><input id="cfg-whatsapp" placeholder="ex: 5585999998888" type="tel"/></div>
+        <div class="fg" style="margin-bottom:12px"><label>Email (opcional)</label><input id="cfg-email" placeholder="seu@email.com" type="email"/></div>
+        <button class="btn btn-primary" onclick="salvarConfig()">Salvar alertas</button>
+      </div>
+
+      <div class="section-title">Segurança</div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:1rem">Alterar senha do proprietário</div>
+        <div class="fg" style="margin-bottom:10px"><label>Senha atual</label><input type="password" id="owner-sa" placeholder="••••"/></div>
+        <div class="fg" style="margin-bottom:10px"><label>Nova senha</label><input type="password" id="owner-sn" placeholder="mínimo 4 caracteres"/></div>
+        <div class="fg" style="margin-bottom:12px"><label>Confirmar nova senha</label><input type="password" id="owner-sc" placeholder="mínimo 4 caracteres"/></div>
+        <button class="btn btn-primary" onclick="alterarSenhaOwner()">Alterar senha</button>
+      </div>
     </div>
 
   </div>
 
-  <!-- NAV BOTTOM OWNER -->
+  <!-- NAV OWNER -->
   <div class="nav-bottom">
     <button class="nav-item owner-nav-item active" onclick="ownerNav('painel',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
       <span>Painel</span>
     </button>
-    <button class="nav-item owner-nav-item" onclick="ownerNav('feed',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-      <span>Feed</span>
-    </button>
-    <button class="nav-item owner-nav-item" onclick="ownerNav('animais',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+    <button class="nav-item owner-nav-item" onclick="ownerNav('rebanho',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
       <span>Rebanho</span>
     </button>
     <button class="nav-item owner-nav-item" onclick="ownerNav('saude',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
       <span>Saúde</span>
     </button>
+    <button class="nav-item owner-nav-item" onclick="ownerNav('financeiro',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      <span>Finanças</span>
+    </button>
     <button class="nav-item owner-nav-item" onclick="ownerNav('vaqueiros',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       <span>Vaqueiros</span>
+    </button>
+    <button class="nav-item owner-nav-item" onclick="ownerNav('relatorios',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>Relatórios</span>
+    </button>
+    <button class="nav-item owner-nav-item" onclick="ownerNav('config',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Config.</span>
     </button>
   </div>
 </div>
@@ -151,22 +216,15 @@
 <!-- ═══ VAQUEIRO ═══ -->
 <div id="screen-worker" class="hidden">
   <div class="topbar">
-    <div class="topbar-brand">
-      <div class="topbar-logo">FazendaPro</div>
-      <div class="topbar-sub">App do vaqueiro</div>
-    </div>
+    <div class="topbar-brand"><div class="topbar-logo">FazendaPro</div><div class="topbar-sub">App do vaqueiro</div></div>
     <div class="topbar-right">
       <div class="user-chip" id="worker-user-chip">—</div>
       <button class="btn-logout" onclick="logout()">Sair</button>
     </div>
   </div>
-
-  <div id="status-bar" class="status-bar online">
-    <div style="display:flex;align-items:center">
-      <div id="status-dot" class="status-dot dot-green"></div>
-      <span id="status-txt">Online</span>
-    </div>
-    <span id="pending-badge" class="pending-badge" style="display:none"></span>
+  <div id="status-bar-w" class="status-bar online">
+    <div style="display:flex;align-items:center"><div class="status-dot dot-green"></div><span class="status-txt">Online</span></div>
+    <span class="pending-badge" style="display:none"></span>
   </div>
 
   <div style="max-width:500px;margin:0 auto">
@@ -177,60 +235,45 @@
         <div>⏳</div>
         <div><div class="pending-count" id="pending-num">0</div><div id="pending-msg">registros aguardando envio</div></div>
       </div>
-
       <div class="section-title">Registrar</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem">
-        <div class="card" style="cursor:pointer;text-align:center;padding:1.25rem 1rem" onclick="openSheet('sheet-animal')">
-          <div style="font-size:32px;margin-bottom:8px">🐄</div>
-          <div style="font-size:14px;font-weight:700">Animal</div>
-          <div style="font-size:11px;color:#888;margin-top:3px">Novo brinco</div>
-        </div>
-        <div class="card" style="cursor:pointer;text-align:center;padding:1.25rem 1rem" onclick="openSheet('sheet-pesagem')">
-          <div style="font-size:32px;margin-bottom:8px">⚖️</div>
-          <div style="font-size:14px;font-weight:700">Pesagem</div>
-          <div style="font-size:11px;color:#888;margin-top:3px">Registrar peso</div>
-        </div>
-        <div class="card" style="cursor:pointer;text-align:center;padding:1.25rem 1rem" onclick="openSheet('sheet-saude')">
-          <div style="font-size:32px;margin-bottom:8px">💉</div>
-          <div style="font-size:14px;font-weight:700">Saúde</div>
-          <div style="font-size:11px;color:#888;margin-top:3px">Vacina / tratamento</div>
-        </div>
-        <div class="card" style="cursor:pointer;text-align:center;padding:1.25rem 1rem;opacity:.5;pointer-events:none">
-          <div style="font-size:32px;margin-bottom:8px">💵</div>
-          <div style="font-size:14px;font-weight:700">Financeiro</div>
-          <div style="font-size:11px;color:#888;margin-top:3px">Só proprietário</div>
-        </div>
+      <div class="quick-grid">
+        <div class="quick-btn" onclick="openSheet('sheet-animal')"><div class="quick-btn-icon">🐄</div><div class="quick-btn-label">Animal</div><div class="quick-btn-sub">Novo brinco</div></div>
+        <div class="quick-btn" onclick="openSheet('sheet-nascimento')"><div class="quick-btn-icon">🐣</div><div class="quick-btn-label">Nascimento</div><div class="quick-btn-sub">Bezerro nascido</div></div>
+        <div class="quick-btn" onclick="openSheet('sheet-pesagem')"><div class="quick-btn-icon">⚖️</div><div class="quick-btn-label">Pesagem</div><div class="quick-btn-sub">Registrar peso</div></div>
+        <div class="quick-btn" onclick="openSheet('sheet-saude')"><div class="quick-btn-icon">💉</div><div class="quick-btn-label">Saúde</div><div class="quick-btn-sub">Vacina / tratamento</div></div>
+        <div class="quick-btn" onclick="openSheet('sheet-repro')"><div class="quick-btn-icon">🔄</div><div class="quick-btn-label">Reprodução</div><div class="quick-btn-sub">Cobertura / gestação</div></div>
+        <div class="quick-btn" onclick="workerNav('nasc-list-page',document.querySelectorAll('.wk-nav-item')[1])"><div class="quick-btn-icon">📋</div><div class="quick-btn-label">Ver nascimentos</div><div class="quick-btn-sub">Histórico</div></div>
       </div>
-
       <div class="section-title">Como funciona offline</div>
       <div class="card">
-        <div class="list-item">
-          <div class="list-icon" style="background:#d1fae5">✅</div>
-          <div class="list-body"><div class="list-title">Sem internet</div><div class="list-sub">Os dados ficam salvos no celular automaticamente</div></div>
-        </div>
-        <div class="list-item">
-          <div class="list-icon" style="background:#dbeafe">📡</div>
-          <div class="list-body"><div class="list-title">Ao conectar</div><div class="list-sub">Tudo é enviado para o proprietário em segundos</div></div>
-        </div>
-        <div class="list-item">
-          <div class="list-icon" style="background:#fef3c7">🔒</div>
-          <div class="list-body"><div class="list-title">Seguro</div><div class="list-sub">Nenhum dado é perdido, mesmo sem sinal</div></div>
-        </div>
+        <div class="list-item"><div class="list-icon" style="background:#d1fae5">✅</div><div class="list-body"><div class="list-title">Sem internet</div><div class="list-sub">Dados salvos automaticamente no celular</div></div></div>
+        <div class="list-item"><div class="list-icon" style="background:#dbeafe">📡</div><div class="list-body"><div class="list-title">Ao conectar</div><div class="list-sub">Tudo enviado ao proprietário em segundos</div></div></div>
+        <div class="list-item"><div class="list-icon" style="background:#fef3c7">🔒</div><div class="list-body"><div class="list-title">Seguro</div><div class="list-sub">Nenhum dado é perdido, mesmo sem sinal</div></div></div>
       </div>
+    </div>
+
+    <!-- NASCIMENTOS LIST -->
+    <div id="wk-page-nasc-list-page" class="page wk-page">
+      <div class="section-title">Nascimentos registrados</div>
+      <div class="card"><div id="w-nasc-list"><div class="empty"><div class="empty-icon">🐄</div><div class="empty-text">Carregando...</div></div></div></div>
     </div>
 
   </div>
 
-  <!-- NAV BOTTOM WORKER -->
+  <!-- NAV WORKER -->
   <div class="nav-bottom">
     <button class="nav-item wk-nav-item active" onclick="workerNav('home',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
       <span>Início</span>
     </button>
+    <button class="nav-item wk-nav-item" onclick="workerNav('nasc-list-page',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span>Nascimentos</span>
+    </button>
   </div>
 </div>
 
-<!-- ═══ SHEETS (VAQUEIRO) ═══ -->
+<!-- ═══ SHEETS VAQUEIRO ═══ -->
 <div id="sheet-animal" class="overlay-bg" onclick="if(event.target===this)closeSheet('sheet-animal')">
   <div class="overlay-sheet">
     <div class="overlay-handle"></div>
@@ -238,13 +281,37 @@
     <div class="form-grid">
       <div class="fg"><label>Brinco / ID *</label><input id="w-r-id" placeholder="ex: 0042"/></div>
       <div class="fg"><label>Nome</label><input id="w-r-nome" placeholder="ex: Mimosa"/></div>
-      <div class="fg"><label>Raça</label><input id="w-r-raca" placeholder="ex: Nelore"/></div>
-      <div class="fg"><label>Categoria</label><select id="w-r-cat"><option>Vaca</option><option>Touro</option><option>Novilha</option><option>Bezerro</option><option>Boi</option></select></div>
+      <div class="fg"><label>Raça</label><input id="w-r-raca" placeholder="Nelore"/></div>
+      <div class="fg"><label>Categoria</label><select id="w-r-cat"><option>Vaca</option><option>Touro</option><option>Novilha</option><option>Bezerro</option><option>Bezerra</option><option>Boi</option></select></div>
+      <div class="fg"><label>Sexo</label><select id="w-r-sexo"><option value="Femea">Fêmea</option><option value="Macho">Macho</option></select></div>
+      <div class="fg"><label>Origem</label><select id="w-r-origem"><option>Nascido na fazenda</option><option>Comprado</option></select></div>
       <div class="fg"><label>Nascimento</label><input type="date" id="w-r-nasc"/></div>
       <div class="fg"><label>Peso (kg)</label><input type="number" id="w-r-peso" placeholder="420"/></div>
+      <div class="fg"><label>Brinco da mãe</label><input id="w-r-mae" placeholder="ex: 0010"/></div>
+      <div class="fg"><label>Brinco do pai</label><input id="w-r-pai" placeholder="ex: 0002"/></div>
       <div class="fg full"><label>Observações</label><textarea id="w-r-obs" placeholder="Informações adicionais..."></textarea></div>
     </div>
     <button class="btn btn-primary" onclick="wSaveAnimal()">Salvar animal</button>
+  </div>
+</div>
+
+<div id="sheet-nascimento" class="overlay-bg" onclick="if(event.target===this)closeSheet('sheet-nascimento')">
+  <div class="overlay-sheet">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">Registrar nascimento</div>
+    <div class="form-grid">
+      <div class="fg"><label>Brinco do bezerro *</label><input id="w-n-brinco" placeholder="ex: 0055"/></div>
+      <div class="fg"><label>Nome (opcional)</label><input id="w-n-nome" placeholder="ex: Pintado"/></div>
+      <div class="fg"><label>Sexo *</label><select id="w-n-sexo"><option value="Femea">Fêmea (bezerra)</option><option value="Macho">Macho (bezerro)</option></select></div>
+      <div class="fg"><label>Raça</label><input id="w-n-raca" placeholder="Nelore"/></div>
+      <div class="fg"><label>Brinco da mãe *</label><input id="w-n-mae" placeholder="ex: 0010"/></div>
+      <div class="fg"><label>Brinco do pai</label><input id="w-n-pai" placeholder="ex: 0002"/></div>
+      <div class="fg"><label>Data de nascimento *</label><input type="date" id="w-n-data"/></div>
+      <div class="fg"><label>Peso ao nascer (kg)</label><input type="number" id="w-n-peso" placeholder="35"/></div>
+      <div class="fg full"><label>Condição do bezerro</label><select id="w-n-cond"><option>Normal</option><option>Fraco</option><option>Necessita atenção</option></select></div>
+      <div class="fg full"><label>Observações</label><textarea id="w-n-obs" placeholder="Parto normal, gemelar, dificuldade..."></textarea></div>
+    </div>
+    <button class="btn btn-primary" onclick="wSaveNascimento()">Registrar nascimento</button>
   </div>
 </div>
 
@@ -266,17 +333,52 @@
 <div id="sheet-saude" class="overlay-bg" onclick="if(event.target===this)closeSheet('sheet-saude')">
   <div class="overlay-sheet">
     <div class="overlay-handle"></div>
-    <div class="overlay-title">Registrar saúde</div>
+    <div class="overlay-title">Registrar procedimento de saúde</div>
     <div class="form-grid">
       <div class="fg"><label>Brinco do animal *</label><input id="w-s-id" placeholder="ex: 0042"/></div>
-      <div class="fg"><label>Tipo</label><select id="w-s-tipo"><option>Vacinação</option><option>Vermifugação</option><option>Tratamento</option><option>Exame</option></select></div>
+      <div class="fg"><label>Tipo</label><select id="w-s-tipo"><option>Vacinação</option><option>Vermifugação</option><option>Carrapaticida</option><option>Tratamento</option><option>Exame</option><option>Cirurgia</option></select></div>
       <div class="fg"><label>Produto</label><input id="w-s-desc" placeholder="ex: Febre Aftosa"/></div>
       <div class="fg"><label>Dose</label><input id="w-s-dose" placeholder="ex: 5 ml"/></div>
       <div class="fg"><label>Data</label><input type="date" id="w-s-data"/></div>
       <div class="fg"><label>Próxima dose</label><input type="date" id="w-s-prox"/></div>
+      <div class="fg"><label>Custo (R$)</label><input type="number" id="w-s-custo" placeholder="0,00"/></div>
       <div class="fg full"><label>Observações</label><textarea id="w-s-obs" placeholder="Sintomas, evolução..."></textarea></div>
     </div>
     <button class="btn btn-primary" onclick="wSaveSaude()">Salvar procedimento</button>
+  </div>
+</div>
+
+<div id="sheet-repro" class="overlay-bg" onclick="if(event.target===this)closeSheet('sheet-repro')">
+  <div class="overlay-sheet">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">Evento reprodutivo</div>
+    <div class="form-grid">
+      <div class="fg"><label>Brinco da fêmea *</label><input id="w-rep-femea" placeholder="ex: 0010"/></div>
+      <div class="fg"><label>Tipo</label><select id="w-rep-tipo"><option>Cobertura natural</option><option>Inseminação artificial</option><option>Diagnóstico de gestação</option><option>Aborto</option></select></div>
+      <div class="fg"><label>Brinco do touro</label><input id="w-rep-touro" placeholder="ex: 0002"/></div>
+      <div class="fg"><label>Sêmen (se IA)</label><input id="w-rep-semen" placeholder="nome / código"/></div>
+      <div class="fg"><label>Data do evento</label><input type="date" id="w-rep-data"/></div>
+      <div class="fg"><label>Resultado</label><select id="w-rep-resultado"><option>Aguardando</option><option>Positivo</option><option>Negativo</option></select></div>
+      <div class="fg full"><label>Observações</label><textarea id="w-rep-obs" placeholder="Observações..."></textarea></div>
+    </div>
+    <p style="font-size:12px;color:#888;margin-bottom:12px">A data prevista de parto (283 dias) é calculada automaticamente.</p>
+    <button class="btn btn-primary" onclick="wSaveRepro()">Salvar evento</button>
+  </div>
+</div>
+
+<!-- Sheet financeiro proprietário -->
+<div id="sheet-fin" class="overlay-bg" onclick="if(event.target===this)closeSheet('sheet-fin')">
+  <div class="overlay-sheet">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">Novo lançamento financeiro</div>
+    <div class="form-grid">
+      <div class="fg"><label>Tipo *</label><select id="fin-tipo"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></div>
+      <div class="fg"><label>Categoria</label><select id="fin-cat"><option>Venda de animal</option><option>Venda de leite</option><option>Ração / suplemento</option><option>Medicamento</option><option>Serviço veterinário</option><option>Compra de animal</option><option>Combustível</option><option>Mão de obra</option><option>Manutenção</option><option>Outro</option></select></div>
+      <div class="fg"><label>Valor (R$) *</label><input type="number" id="fin-valor" placeholder="0,00"/></div>
+      <div class="fg"><label>Data</label><input type="date" id="fin-data"/></div>
+      <div class="fg full"><label>Observação</label><input id="fin-obs" placeholder="Nota opcional..."/></div>
+    </div>
+    <button class="btn btn-primary" onclick="addFin()">Registrar lançamento</button>
   </div>
 </div>
 
@@ -284,7 +386,7 @@
 <div id="ov-confirm" class="overlay-bg" onclick="if(event.target===this)cancelarConfirm()">
   <div class="overlay-sheet">
     <div class="overlay-handle"></div>
-    <div class="overlay-title" id="ov-confirm-titulo">Confirmar ação</div>
+    <div class="overlay-title" id="ov-confirm-titulo">Confirmar</div>
     <p style="font-size:13px;color:#444;margin-bottom:1.25rem;line-height:1.7" id="ov-confirm-body"></p>
     <div style="display:flex;gap:8px">
       <button class="btn btn-sm btn-danger" id="ov-confirm-btn" onclick="executarConfirm()">Confirmar</button>
@@ -313,13 +415,10 @@
     <div class="overlay-handle"></div>
     <div class="overlay-title">Alterar senha</div>
     <p style="font-size:13px;color:#888;margin-bottom:1rem">Vaqueiro: <strong id="ov-senha-nome"></strong></p>
-    <div class="field">
-      <label>Nova senha *</label>
-      <input type="password" id="nv-senha" placeholder="mínimo 4 caracteres" onkeydown="if(event.key==='Enter')salvarSenha()"/>
-    </div>
+    <div class="field"><label>Nova senha *</label><input type="password" id="nv-senha" placeholder="mínimo 4 caracteres" onkeydown="if(event.key==='Enter')salvarSenha()"/></div>
     <div class="login-err" id="nv-senha-err"></div>
     <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="btn btn-primary" style="flex:1;padding:12px" onclick="salvarSenha()">Salvar nova senha</button>
+      <button class="btn btn-primary" style="flex:1;padding:12px" onclick="salvarSenha()">Salvar senha</button>
       <button class="btn" onclick="fecharSenha()">Cancelar</button>
     </div>
   </div>

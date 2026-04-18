@@ -9,10 +9,17 @@ if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 const db = new Database(path.join(dbDir, 'fazenda.db'));
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS config (
+    chave TEXT PRIMARY KEY,
+    valor TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS owners (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     usuario TEXT UNIQUE NOT NULL,
-    senha_hash TEXT NOT NULL
+    senha_hash TEXT NOT NULL,
+    email TEXT DEFAULT '',
+    whatsapp TEXT DEFAULT ''
   );
 
   CREATE TABLE IF NOT EXISTS vaqueiros (
@@ -29,10 +36,49 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     brinco TEXT UNIQUE NOT NULL,
     nome TEXT DEFAULT '',
-    raca TEXT DEFAULT '',
+    raca TEXT DEFAULT 'Nelore',
     categoria TEXT DEFAULT 'Vaca',
+    sexo TEXT DEFAULT 'Femea',
     nascimento TEXT,
     peso REAL,
+    pai_brinco TEXT DEFAULT '',
+    mae_brinco TEXT DEFAULT '',
+    origem TEXT DEFAULT 'Comprado',
+    foto TEXT DEFAULT '',
+    observacoes TEXT DEFAULT '',
+    ativo INTEGER DEFAULT 1,
+    registrado_por INTEGER,
+    criado_em TEXT DEFAULT (date('now')),
+    sync_id TEXT UNIQUE,
+    FOREIGN KEY (registrado_por) REFERENCES vaqueiros(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS nascimentos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    brinco_bezerro TEXT NOT NULL,
+    nome_bezerro TEXT DEFAULT '',
+    sexo TEXT DEFAULT 'Femea',
+    mae_brinco TEXT NOT NULL,
+    pai_brinco TEXT DEFAULT '',
+    data_nascimento TEXT NOT NULL,
+    peso_nascimento REAL,
+    condicao TEXT DEFAULT 'Normal',
+    observacoes TEXT DEFAULT '',
+    registrado_por INTEGER,
+    criado_em TEXT DEFAULT (date('now')),
+    sync_id TEXT UNIQUE,
+    FOREIGN KEY (registrado_por) REFERENCES vaqueiros(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS reproducao (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    femea_brinco TEXT NOT NULL,
+    tipo TEXT DEFAULT 'Cobertura natural',
+    touro_brinco TEXT DEFAULT '',
+    semen TEXT DEFAULT '',
+    data_evento TEXT NOT NULL,
+    resultado TEXT DEFAULT 'Aguardando',
+    data_parto_previsto TEXT,
     observacoes TEXT DEFAULT '',
     registrado_por INTEGER,
     criado_em TEXT DEFAULT (date('now')),
@@ -48,6 +94,7 @@ db.exec(`
     condicao_corporal TEXT DEFAULT '3 (ideal)',
     observacoes TEXT DEFAULT '',
     registrado_por INTEGER,
+    criado_em TEXT DEFAULT (date('now')),
     sync_id TEXT UNIQUE,
     FOREIGN KEY (registrado_por) REFERENCES vaqueiros(id)
   );
@@ -55,14 +102,29 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS saude (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     animal_brinco TEXT NOT NULL,
-    tipo TEXT DEFAULT 'Vacinação',
+    tipo TEXT DEFAULT 'Vacinacao',
     produto TEXT DEFAULT '',
     dose TEXT DEFAULT '',
     data TEXT NOT NULL,
     proxima_dose TEXT,
+    custo REAL DEFAULT 0,
     observacoes TEXT DEFAULT '',
     registrado_por INTEGER,
+    criado_em TEXT DEFAULT (date('now')),
     sync_id TEXT UNIQUE,
+    FOREIGN KEY (registrado_por) REFERENCES vaqueiros(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS financeiro (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo TEXT NOT NULL,
+    categoria TEXT NOT NULL,
+    valor REAL NOT NULL,
+    data TEXT NOT NULL,
+    animal_brinco TEXT DEFAULT '',
+    observacao TEXT DEFAULT '',
+    registrado_por INTEGER,
+    criado_em TEXT DEFAULT (date('now')),
     FOREIGN KEY (registrado_por) REFERENCES vaqueiros(id)
   );
 
@@ -78,20 +140,20 @@ db.exec(`
   );
 `);
 
-const ownerExiste = db.prepare('SELECT id FROM owners WHERE usuario = ?').get('fazenda');
-if (!ownerExiste) {
-  db.prepare('INSERT INTO owners (usuario, senha_hash) VALUES (?, ?)').run(
-    'fazenda', bcrypt.hashSync('1234', 10)
-  );
-  console.log('Proprietário criado: usuário=fazenda, senha=1234');
-}
+const configs = [
+  ['fazenda_nome','Minha Fazenda'],['fazenda_foco','Corte'],
+  ['fazenda_raca','Nelore'],['whatsapp_alertas',''],['email_alertas','']
+];
+const insConf = db.prepare('INSERT OR IGNORE INTO config (chave,valor) VALUES (?,?)');
+configs.forEach(([k,v]) => insConf.run(k,v));
 
-const vaqExiste = db.prepare('SELECT id FROM vaqueiros WHERE codigo = ?').get('VAQ-001');
-if (!vaqExiste) {
-  db.prepare('INSERT INTO vaqueiros (codigo, nome, telefone, senha_hash) VALUES (?, ?, ?, ?)').run(
-    'VAQ-001', 'João da Silva', '(85) 98765-4321', bcrypt.hashSync('1234', 10)
-  );
-  console.log('Vaqueiro de exemplo: código=VAQ-001, senha=1234');
+if (!db.prepare('SELECT id FROM owners WHERE usuario=?').get('fazenda')) {
+  db.prepare('INSERT INTO owners (usuario,senha_hash) VALUES (?,?)').run('fazenda', bcrypt.hashSync('1234',10));
+  console.log('Owner criado: fazenda / 1234');
+}
+if (!db.prepare('SELECT id FROM vaqueiros WHERE codigo=?').get('VAQ-001')) {
+  db.prepare('INSERT INTO vaqueiros (codigo,nome,telefone,senha_hash) VALUES (?,?,?,?)').run('VAQ-001','João da Silva','(85) 98765-4321', bcrypt.hashSync('1234',10));
+  console.log('Vaqueiro exemplo: VAQ-001 / 1234');
 }
 
 module.exports = db;
