@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: fazendapro
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: SESSION_SECRET
+        generateValue: true
+    disk:
+      name: dados-fazenda
+      mountPath: /opt/render/project/src/db
+      sizeGB: 1

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#0F6E56"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="FazendaPro"/>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="apple-touch-icon" href="/icons/icon-192.png"/>
+<title>FazendaPro</title>
+<link rel="stylesheet" href="/css/app.css"/>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<!-- ═══ LOGIN ═══ -->
+<div id="screen-login" class="login-screen">
+  <div class="login-card">
+    <div class="login-logo">FazendaPro</div>
+    <div class="login-tagline">Gestão de gado com suporte offline</div>
+    <div class="role-switch">
+      <button class="role-btn active" onclick="setLoginRole('owner',this)">Proprietário</button>
+      <button class="role-btn" onclick="setLoginRole('worker',this)">Vaqueiro</button>
+    </div>
+    <div id="f-owner">
+      <div class="field"><label>Usuário</label><input id="l-usuario" placeholder="fazenda" autocomplete="username"/></div>
+      <div class="field"><label>Senha</label><input type="password" id="l-senha" placeholder="••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    </div>
+    <div id="f-worker" class="hidden">
+      <div class="field"><label>Código do vaqueiro</label><input id="l-codigo" placeholder="ex: VAQ-001" autocomplete="username"/></div>
+      <div class="field"><label>Senha</label><input type="password" id="l-senha-w" placeholder="••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    </div>
+    <div class="login-err" id="login-err"></div>
+    <button class="btn-login" onclick="doLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- ═══ PROPRIETÁRIO ═══ -->
+<div id="screen-owner" class="hidden">
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-logo">FazendaPro</div>
+      <div class="topbar-sub">Painel do proprietário</div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-chip" id="owner-user-chip">Proprietário</div>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
+  </div>
+
+  <div id="status-bar" class="status-bar online">
+    <div style="display:flex;align-items:center">
+      <div id="status-dot" class="status-dot dot-green"></div>
+      <span id="status-txt">Online</span>
+    </div>
+    <span id="pending-badge" class="pending-badge" style="display:none"></span>
+  </div>
+
+  <div style="max-width:700px;margin:0 auto">
+
+    <!-- PAINEL -->
+    <div id="op-painel" class="page owner-page active">
+      <div class="metric-row">
+        <div class="metric-card"><div class="metric-lbl">Animais</div><div class="metric-val" id="dash-animais">—</div></div>
+        <div class="metric-card"><div class="metric-lbl">Vaqueiros</div><div class="metric-val" id="dash-vaqueiros">—</div></div>
+      </div>
+      <div class="metric-row">
+        <div class="metric-card"><div class="metric-lbl">Saúde vencida</div><div class="metric-val" id="dash-saude">—</div></div>
+        <div class="metric-card"><div class="metric-lbl">Saldo</div><div class="metric-val" style="font-size:18px" id="dash-saldo">—</div></div>
+      </div>
+      <div class="section-title">Últimas atividades</div>
+      <div class="card"><div id="dash-feed"></div></div>
+    </div>
+
+    <!-- FEED -->
+    <div id="op-feed" class="page owner-page">
+      <div class="section-title">Feed ao vivo</div>
+      <div class="card"><div id="feed-list"></div></div>
+    </div>
+
+    <!-- ANIMAIS -->
+    <div id="op-animais" class="page owner-page">
+      <div class="section-title">Rebanho</div>
+      <div class="card"><div id="animais-list"></div></div>
+    </div>
+
+    <!-- SAÚDE -->
+    <div id="op-saude" class="page owner-page">
+      <div class="section-title">Registros de saúde</div>
+      <div class="card"><div id="saude-list"></div></div>
+    </div>
+
+    <!-- VAQUEIROS -->
+    <div id="op-vaqueiros" class="page owner-page">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+        <div>
+          <div class="section-title" style="margin:0">Vaqueiros</div>
+          <div style="font-size:12px;color:#888;margin-top:2px" id="vaq-counter">—</div>
+        </div>
+        <button class="btn btn-sm btn-primary" style="background:#0F6E56;color:#fff;border-color:#0F6E56;white-space:nowrap" onclick="showAddWorker()">+ Adicionar</button>
+      </div>
+
+      <div style="margin-bottom:.75rem">
+        <input
+          type="search"
+          placeholder="Buscar por nome, código ou telefone..."
+          oninput="buscarVaqueiros(this.value)"
+          style="width:100%;padding:10px 14px;border:1.5px solid #e8e6e0;border-radius:10px;font-size:14px;outline:none;background:#fff;color:#1a1a1a"
+        />
+      </div>
+
+      <div style="display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap">
+        <button class="btn btn-sm vaq-filter-btn active" onclick="filtrarVaqueiros('todos',this)">Todos</button>
+        <button class="btn btn-sm vaq-filter-btn" onclick="filtrarVaqueiros('ativos',this)">Ativos</button>
+        <button class="btn btn-sm vaq-filter-btn" onclick="filtrarVaqueiros('inativos',this)">Desativados</button>
+      </div>
+
+      <div id="vaqueiros-list"></div>
+    </div>
+
+  </div>
+
+  <!-- NAV BOTTOM OWNER -->
+  <div class="nav-bottom">
+    <button class="nav-item owner-nav-item active" onclick="ownerNav('painel',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span>Painel</span>
+    </button>
+    <button class="nav-item owner-nav-item" onclick="ownerNav('feed',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      <span>Feed</span>
+    </button>
+    <button class="nav-item owner-nav-item" onclick="ownerNav('animais',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      <span>Rebanho</span>
+    </button>
+    <button class="nav-item owner-nav-item" onclick="ownerNav('saude',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
+      <span>Saúde</span>
+    </button>
+    <button class="nav-item owner-nav-item" onclick="ownerNav('vaqueiros',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Vaqueiros</span>
+    </button>
+  </div>
+</div>
+
+<!-- ═══ VAQUEIRO ═══ -->
+<div id="screen-worker" class="hidden">
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-logo">FazendaPro</div>
+      <div class="topbar-sub">App do vaqueiro</div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-chip" id="worker-user-chip">—</div>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
+  </div>
+
+  <div id="status-bar" class="status-bar online">
+    <div style="display:flex;align-items:center">
+      <div id="status-dot" class="status-dot dot-green"></div>
+      <span id="status-txt">Online</span>
+    </div>
+    <span id="pending-badge" class="pending-badge" style="display:none"></span>
+  </div>
+
+  <div style="max-width:500px;margin:0 auto">
+
+    <!-- HOME -->
+    <div id="wk-page-home" class="page wk-page">
+      <div id="pending-indicator" class="pending-indicator" style="display:none">
+        <div>⏳</div>
+        <div><div class="pending-count" id="pending-num">0</div><div id="pending-msg">registros aguardando envio</div></div>
+      </div>
+
+      <div class="section-title">Registrar</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem">
+        <div class="card" style="cursor:pointer;text-align:center;padding:1.25rem 1rem" onclick="openSheet('sheet-animal')">
+          <div style="font-size:32px;margin-bottom:8px">🐄</div>
+          <div style="font-size:14px;font-weight:700">Animal</div>
+          <div style="font-size:11px;color:#888;margin-top:3px">Novo brinco</div>
+        </div>
+        <div class="card" style="cursor:pointer;text-align:center;padding:1.25rem 1rem" onclick="openSheet('sheet-pesagem')">
+          <div style="font-size:32px;margin-bottom:8px">⚖️</div>
+          <div style="font-size:14px;font-weight:700">Pesagem</div>
+          <div style="font-size:11px;color:#888;margin-top:3px">Registrar peso</div>
+        </div>
+        <div class="card" style="cursor:pointer;text-align:center;padding:1.25rem 1rem" onclick="openSheet('sheet-saude')">
+          <div style="font-size:32px;margin-bottom:8px">💉</div>
+          <div style="font-size:14px;font-weight:700">Saúde</div>
+          <div style="font-size:11px;color:#888;margin-top:3px">Vacina / tratamento</div>
+        </div>
+        <div class="card" style="cursor:pointer;text-align:center;padding:1.25rem 1rem;opacity:.5;pointer-events:none">
+          <div style="font-size:32px;margin-bottom:8px">💵</div>
+          <div style="font-size:14px;font-weight:700">Financeiro</div>
+          <div style="font-size:11px;color:#888;margin-top:3px">Só proprietário</div>
+        </div>
+      </div>
+
+      <div class="section-title">Como funciona offline</div>
+      <div class="card">
+        <div class="list-item">
+          <div class="list-icon" style="background:#d1fae5">✅</div>
+          <div class="list-body"><div class="list-title">Sem internet</div><div class="list-sub">Os dados ficam salvos no celular automaticamente</div></div>
+        </div>
+        <div class="list-item">
+          <div class="list-icon" style="background:#dbeafe">📡</div>
+          <div class="list-body"><div class="list-title">Ao conectar</div><div class="list-sub">Tudo é enviado para o proprietário em segundos</div></div>
+        </div>
+        <div class="list-item">
+          <div class="list-icon" style="background:#fef3c7">🔒</div>
+          <div class="list-body"><div class="list-title">Seguro</div><div class="list-sub">Nenhum dado é perdido, mesmo sem sinal</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- NAV BOTTOM WORKER -->
+  <div class="nav-bottom">
+    <button class="nav-item wk-nav-item active" onclick="workerNav('home',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+      <span>Início</span>
+    </button>
+  </div>
+</div>
+
+<!-- ═══ SHEETS (VAQUEIRO) ═══ -->
+<div id="sheet-animal" class="overlay-bg" onclick="if(event.target===this)closeSheet('sheet-animal')">
+  <div class="overlay-sheet">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">Cadastrar animal</div>
+    <div class="form-grid">
+      <div class="fg"><label>Brinco / ID *</label><input id="w-r-id" placeholder="ex: 0042"/></div>
+      <div class="fg"><label>Nome</label><input id="w-r-nome" placeholder="ex: Mimosa"/></div>
+      <div class="fg"><label>Raça</label><input id="w-r-raca" placeholder="ex: Nelore"/></div>
+      <div class="fg"><label>Categoria</label><select id="w-r-cat"><option>Vaca</option><option>Touro</option><option>Novilha</option><option>Bezerro</option><option>Boi</option></select></div>
+      <div class="fg"><label>Nascimento</label><input type="date" id="w-r-nasc"/></div>
+      <div class="fg"><label>Peso (kg)</label><input type="number" id="w-r-peso" placeholder="420"/></div>
+      <div class="fg full"><label>Observações</label><textarea id="w-r-obs" placeholder="Informações adicionais..."></textarea></div>
+    </div>
+    <button class="btn btn-primary" onclick="wSaveAnimal()">Salvar animal</button>
+  </div>
+</div>
+
+<div id="sheet-pesagem" class="overlay-bg" onclick="if(event.target===this)closeSheet('sheet-pesagem')">
+  <div class="overlay-sheet">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">Registrar pesagem</div>
+    <div class="form-grid">
+      <div class="fg"><label>Brinco do animal *</label><input id="w-p-id" placeholder="ex: 0042"/></div>
+      <div class="fg"><label>Peso (kg) *</label><input type="number" id="w-p-peso" placeholder="450"/></div>
+      <div class="fg"><label>Data</label><input type="date" id="w-p-data"/></div>
+      <div class="fg"><label>Condição corporal</label><select id="w-p-cc"><option>1 — Muito magro</option><option>2 — Magro</option><option>3 (ideal)</option><option>4 — Gordo</option><option>5 — Muito gordo</option></select></div>
+      <div class="fg full"><label>Observações</label><textarea id="w-p-obs" placeholder="Observações..."></textarea></div>
+    </div>
+    <button class="btn btn-primary" onclick="wSavePesagem()">Salvar pesagem</button>
+  </div>
+</div>
+
+<div id="sheet-saude" class="overlay-bg" onclick="if(event.target===this)closeSheet('sheet-saude')">
+  <div class="overlay-sheet">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">Registrar saúde</div>
+    <div class="form-grid">
+      <div class="fg"><label>Brinco do animal *</label><input id="w-s-id" placeholder="ex: 0042"/></div>
+      <div class="fg"><label>Tipo</label><select id="w-s-tipo"><option>Vacinação</option><option>Vermifugação</option><option>Tratamento</option><option>Exame</option></select></div>
+      <div class="fg"><label>Produto</label><input id="w-s-desc" placeholder="ex: Febre Aftosa"/></div>
+      <div class="fg"><label>Dose</label><input id="w-s-dose" placeholder="ex: 5 ml"/></div>
+      <div class="fg"><label>Data</label><input type="date" id="w-s-data"/></div>
+      <div class="fg"><label>Próxima dose</label><input type="date" id="w-s-prox"/></div>
+      <div class="fg full"><label>Observações</label><textarea id="w-s-obs" placeholder="Sintomas, evolução..."></textarea></div>
+    </div>
+    <button class="btn btn-primary" onclick="wSaveSaude()">Salvar procedimento</button>
+  </div>
+</div>
+
+<!-- ═══ MODAIS PROPRIETÁRIO ═══ -->
+<div id="ov-confirm" class="overlay-bg" onclick="if(event.target===this)cancelarConfirm()">
+  <div class="overlay-sheet">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title" id="ov-confirm-titulo">Confirmar ação</div>
+    <p style="font-size:13px;color:#444;margin-bottom:1.25rem;line-height:1.7" id="ov-confirm-body"></p>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm btn-danger" id="ov-confirm-btn" onclick="executarConfirm()">Confirmar</button>
+      <button class="btn btn-sm" onclick="cancelarConfirm()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="ov-editar" class="overlay-bg" onclick="if(event.target===this)fecharEditar()">
+  <div class="overlay-sheet">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">Editar vaqueiro</div>
+    <input type="hidden" id="ev-id"/>
+    <div class="field"><label>Nome completo *</label><input id="ev-nome" placeholder="ex: João da Silva" autocomplete="off"/></div>
+    <div class="field"><label>Telefone / WhatsApp</label><input id="ev-tel" placeholder="(85) 9xxxx-xxxx" type="tel"/></div>
+    <div class="login-err" id="ev-err"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-primary" style="flex:1;padding:12px" onclick="salvarEdicao()">Salvar alterações</button>
+      <button class="btn" onclick="fecharEditar()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="ov-senha" class="overlay-bg" onclick="if(event.target===this)fecharSenha()">
+  <div class="overlay-sheet">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">Alterar senha</div>
+    <p style="font-size:13px;color:#888;margin-bottom:1rem">Vaqueiro: <strong id="ov-senha-nome"></strong></p>
+    <div class="field">
+      <label>Nova senha *</label>
+      <input type="password" id="nv-senha" placeholder="mínimo 4 caracteres" onkeydown="if(event.key==='Enter')salvarSenha()"/>
+    </div>
+    <div class="login-err" id="nv-senha-err"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-primary" style="flex:1;padding:12px" onclick="salvarSenha()">Salvar nova senha</button>
+      <button class="btn" onclick="fecharSenha()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="ov-add-worker" class="overlay-bg" onclick="if(event.target===this)closeAddWorker()">
+  <div class="overlay-sheet">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">Cadastrar vaqueiro</div>
+    <div class="field"><label>Nome completo *</label><input id="nw-nome" placeholder="ex: João da Silva" autocomplete="off"/></div>
+    <div class="field"><label>Telefone / WhatsApp</label><input id="nw-tel" placeholder="(85) 9xxxx-xxxx" type="tel"/></div>
+    <div class="field"><label>Senha de acesso *</label><input type="password" id="nw-senha" placeholder="mínimo 4 caracteres" onkeydown="if(event.key==='Enter')addWorker()"/></div>
+    <div class="login-err" id="nw-err"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-primary" style="flex:1;padding:12px" onclick="addWorker()">Cadastrar</button>
+      <button class="btn" onclick="closeAddWorker()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/db.js"></script>
+<script src="/js/sync.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>
