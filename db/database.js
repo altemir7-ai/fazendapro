@@ -138,6 +138,46 @@ db.exec(`
     data TEXT,
     FOREIGN KEY (vaqueiro_id) REFERENCES vaqueiros(id)
   );
+
+  CREATE TABLE IF NOT EXISTS conferencias (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    data TEXT NOT NULL,
+    lote TEXT DEFAULT 'Geral',
+    total_esperado INTEGER DEFAULT 0,
+    total_presentes INTEGER DEFAULT 0,
+    total_ausentes INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'em_andamento',
+    observacoes TEXT DEFAULT '',
+    registrado_por INTEGER,
+    criado_em TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (registrado_por) REFERENCES vaqueiros(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS conferencia_animais (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    conferencia_id INTEGER NOT NULL,
+    animal_brinco TEXT NOT NULL,
+    animal_nome TEXT DEFAULT '',
+    status TEXT DEFAULT 'presente',
+    observacao TEXT DEFAULT '',
+    FOREIGN KEY (conferencia_id) REFERENCES conferencias(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS mortalidade (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    animal_brinco TEXT NOT NULL,
+    animal_nome TEXT DEFAULT '',
+    data_obito TEXT NOT NULL,
+    causa TEXT DEFAULT 'Não identificada',
+    descricao TEXT DEFAULT '',
+    localizacao TEXT DEFAULT '',
+    peso_estimado REAL,
+    foto TEXT DEFAULT '',
+    registrado_por INTEGER,
+    criado_em TEXT DEFAULT (datetime('now')),
+    sync_id TEXT UNIQUE,
+    FOREIGN KEY (registrado_por) REFERENCES vaqueiros(id)
+  );
 `);
 
 const configs = [

@@ -7,13 +7,22 @@ const Sync = (() => {
     syncing=true;
     onStatusChange&&onStatusChange('syncing');
     try{
-      const [animais,pesagens,saude,nascimentos,reproducao]=await Promise.all([
+      const [animais,pesagens,saude,nascimentos,reproducao,mortalidade]=await Promise.all([
         LocalDB.getPending('animais'),LocalDB.getPending('pesagens'),LocalDB.getPending('saude'),
-        LocalDB.getPending('nascimentos'),LocalDB.getPending('reproducao')
+        LocalDB.getPending('nascimentos'),LocalDB.getPending('reproducao'),LocalDB.getPending('mortalidade')
       ]);
-      if(!animais.length&&!pesagens.length&&!saude.length&&!nascimentos.length&&!reproducao.length){
-        syncing=false;onStatusChange&&onStatusChange('online');return;
+      const temDados=animais.length||pesagens.length||saude.length||nascimentos.length||reproducao.length||mortalidade.length;
+      if(!temDados){syncing=false;onStatusChange&&onStatusChange('online');return;}
+
+      // Sync mortalidade separado
+      for(const m of mortalidade){
+        try{
+          await fetch('/api/mortalidade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(m)});
+          await LocalDB.markSynced('mortalidade',m.sync_id);
+        }catch(e){}
       }
+
+      // Sync demais
       const res=await fetch('/api/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({animais,pesagens,saude,nascimentos,reproducao})});
       if(res.status===401){syncing=false;onStatusChange&&onStatusChange('online');return;}
       const data=await res.json();

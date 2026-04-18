@@ -345,6 +345,109 @@ app.get('/api/relatorio/csv/:tabela', authOwner, (req,res) => {
   res.send('\uFEFF'+headers+'\n'+lines.join('\n'));
 });
 
+// ── CONFERÊNCIA DO GADO ───────────────────────────
+app.get('/api/conferencias', authAny, (req,res) => {
+  res.json(db.prepare(`
+    SELECT c.*, v.nome as vaqueiro_nome,
+      (SELECT COUNT(*) FROM conferencia_animais WHERE conferencia_id=c.id AND status='presente') as confirmados,
+      (SELECT COUNT(*) FROM conferencia_animais WHERE conferencia_id=c.id AND status='ausente') as ausentes
+    FROM conferencias c LEFT JOIN vaqueiros v ON c.registrado_por=v.id
+    ORDER BY c.id DESC LIMIT 50
+  `).all());
+});
+
+app.post('/api/conferencias', authAny, (req,res) => {
+  const {lote, total_esperado, observacoes} = req.body;
+  const wId = req.session.user.role==='worker' ? req.session.user.id : null;
+  const info = db.prepare('INSERT INTO conferencias (data,lote,total_esperado,status,observacoes,registrado_por) VALUES (?,?,?,?,?,?)').run(
+    new Date().toISOString().slice(0,10), lote||'Geral', total_esperado||0, 'em_andamento', observacoes||'', wId
+  );
+  if(wId) addFeed(wId,'Conferência',`Iniciou conferência — Lote: ${lote||'Geral'}`,'teal');
+  res.json({id:info.lastInsertRowid});
+});
+
+app.get('/api/conferencias/:id', authAny, (req,res) => {
+  const conf = db.prepare('SELECT * FROM conferencias WHERE id=?').get(req.params.id);
+  if(!conf) return res.status(404).json({error:'Conferência não encontrada.'});
+  const animais = db.prepare('SELECT * FROM conferencia_animais WHERE conferencia_id=? ORDER BY id').all(req.params.id);
+  res.json({...conf, animais});
+});
+
+app.post('/api/conferencias/:id/registrar', authAny, (req,res) => {
+  const {brinco, status, observacao} = req.body;
+  if(!brinco) return res.status(400).json({error:'Informe o brinco.'});
+  const conf = db.prepare('SELECT * FROM conferencias WHERE id=?').get(req.params.id);
+  if(!conf) return res.status(404).json({error:'Conferência não encontrada.'});
+  if(conf.status==='finalizada') return res.status(400).json({error:'Conferência já finalizada.'});
+
+  const animal = db.prepare('SELECT nome FROM animais WHERE brinco=?').get(brinco);
+  const jaReg = db.prepare('SELECT id FROM conferencia_animais WHERE conferencia_id=? AND animal_brinco=?').get(req.params.id, brinco);
+
+  if(jaReg) {
+    db.prepare('UPDATE conferencia_animais SET status=?,observacao=? WHERE id=?').run(status||'presente', observacao||'', jaReg.id);
+  } else {
+    db.prepare('INSERT INTO conferencia_animais (conferencia_id,animal_brinco,animal_nome,status,observacao) VALUES (?,?,?,?,?)').run(
+      req.params.id, brinco, animal?.nome||'', status||'presente', observacao||''
+    );
+  }
+
+  // Atualizar totais
+  const presentes = db.prepare("SELECT COUNT(*) as n FROM conferencia_animais WHERE conferencia_id=? AND status='presente'").get(req.params.id).n;
+  const ausentes  = db.prepare("SELECT COUNT(*) as n FROM conferencia_animais WHERE conferencia_id=? AND status='ausente'").get(req.params.id).n;
+  db.prepare('UPDATE conferencias SET total_presentes=?,total_ausentes=? WHERE id=?').run(presentes, ausentes, req.params.id);
+
+  res.json({ok:true, animal_nome:animal?.nome||'', presentes, ausentes});
+});
+
+app.patch('/api/conferencias/:id/finalizar', authAny, (req,res) => {
+  const conf = db.prepare('SELECT * FROM conferencias WHERE id=?').get(req.params.id);
+  if(!conf) return res.status(404).json({error:'Não encontrada.'});
+  db.prepare('UPDATE conferencias SET status=? WHERE id=?').run('finalizada', req.params.id);
+  const wId = req.session.user.role==='worker' ? req.session.user.id : null;
+  if(wId) addFeed(wId,'Conferência',`Finalizou conferência — ${conf.total_presentes} presentes, ${conf.total_ausentes} ausentes`,'teal');
+  res.json({ok:true});
+});
+
+app.delete('/api/conferencias/:id', authOwner, (req,res) => {
+  db.prepare('DELETE FROM conferencia_animais WHERE conferencia_id=?').run(req.params.id);
+  db.prepare('DELETE FROM conferencias WHERE id=?').run(req.params.id);
+  res.json({ok:true});
+});
+
+// ── MORTALIDADE ───────────────────────────────────
+app.get('/api/mortalidade', authAny, (req,res) => {
+  res.json(db.prepare(`
+    SELECT m.*, v.nome as vaqueiro_nome FROM mortalidade m
+    LEFT JOIN vaqueiros v ON m.registrado_por=v.id
+    ORDER BY m.data_obito DESC
+  `).all());
+});
+
+app.post('/api/mortalidade', authAny, (req,res) => {
+  const {animal_brinco,animal_nome,data_obito,causa,descricao,localizacao,peso_estimado,foto,sync_id} = req.body;
+  if(!animal_brinco) return res.status(400).json({error:'Informe o brinco do animal.'});
+  const wId = req.session.user.role==='worker' ? req.session.user.id : null;
+  const sid = sync_id || (Date.now().toString(36)+Math.random().toString(36).slice(2));
+  try {
+    db.prepare('INSERT OR IGNORE INTO mortalidade (animal_brinco,animal_nome,data_obito,causa,descricao,localizacao,peso_estimado,foto,registrado_por,sync_id) VALUES (?,?,?,?,?,?,?,?,?,?)').run(
+      animal_brinco, animal_nome||'', data_obito||new Date().toISOString().slice(0,10),
+      causa||'Não identificada', descricao||'', localizacao||'',
+      peso_estimado||null, foto||'', wId, sid
+    );
+    // Desativar animal no rebanho
+    db.prepare('UPDATE animais SET ativo=0 WHERE brinco=?').run(animal_brinco);
+    if(wId) addFeed(wId,'Mortalidade',`Óbito registrado — animal ${animal_brinco}${animal_nome?' ('+animal_nome+')':''}`,'red');
+    res.json({ok:true});
+  } catch(e) {
+    res.status(500).json({error:e.message});
+  }
+});
+
+app.delete('/api/mortalidade/:id', authOwner, (req,res) => {
+  db.prepare('DELETE FROM mortalidade WHERE id=?').run(req.params.id);
+  res.json({ok:true});
+});
+
 // ── ALERTA WHATSAPP (via wa.me link) ─────────────
 app.get('/api/alertas/whatsapp', authOwner, (req,res) => {
   const vencidos = db.prepare("SELECT s.*,a.nome as animal_nome FROM saude s LEFT JOIN animais a ON s.animal_brinco=a.brinco WHERE s.proxima_dose<date('now') AND s.proxima_dose!=''").all();

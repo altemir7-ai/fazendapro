@@ -134,6 +134,22 @@
       <div id="vaqueiros-list"></div>
     </div>
 
+    <!-- CONFERÊNCIA -->
+    <div id="op-conferencia" class="page owner-page">
+      <div class="section-title">Histórico de conferências</div>
+      <div class="card"><div id="conf-list-owner"></div></div>
+    </div>
+
+    <!-- MORTALIDADE -->
+    <div id="op-mortalidade" class="page owner-page">
+      <div class="metric-row">
+        <div class="metric-card"><div class="metric-lbl">Total de óbitos</div><div class="metric-val" id="mort-total">—</div></div>
+        <div class="metric-card"><div class="metric-lbl">Por causa</div><div style="margin-top:8px" id="mort-stats"></div></div>
+      </div>
+      <div class="section-title">Registros de óbito</div>
+      <div class="card"><div id="mort-list"></div></div>
+    </div>
+
     <!-- RELATÓRIOS -->
     <div id="op-relatorios" class="page owner-page">
       <div class="section-title">Exportar dados</div>
@@ -206,6 +222,14 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       <span>Relatórios</span>
     </button>
+    <button class="nav-item owner-nav-item" onclick="ownerNav('conferencia',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <span>Chamada</span>
+    </button>
+    <button class="nav-item owner-nav-item" onclick="ownerNav('mortalidade',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      <span>Óbitos</span>
+    </button>
     <button class="nav-item owner-nav-item" onclick="ownerNav('config',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       <span>Config.</span>
@@ -242,7 +266,9 @@
         <div class="quick-btn" onclick="openSheet('sheet-pesagem')"><div class="quick-btn-icon">⚖️</div><div class="quick-btn-label">Pesagem</div><div class="quick-btn-sub">Registrar peso</div></div>
         <div class="quick-btn" onclick="openSheet('sheet-saude')"><div class="quick-btn-icon">💉</div><div class="quick-btn-label">Saúde</div><div class="quick-btn-sub">Vacina / tratamento</div></div>
         <div class="quick-btn" onclick="openSheet('sheet-repro')"><div class="quick-btn-icon">🔄</div><div class="quick-btn-label">Reprodução</div><div class="quick-btn-sub">Cobertura / gestação</div></div>
-        <div class="quick-btn" onclick="workerNav('nasc-list-page',document.querySelectorAll('.wk-nav-item')[1])"><div class="quick-btn-icon">📋</div><div class="quick-btn-label">Ver nascimentos</div><div class="quick-btn-sub">Histórico</div></div>
+        <div class="quick-btn" onclick="workerNav('conferencia-page',null)"><div class="quick-btn-icon">📋</div><div class="quick-btn-label">Conferência</div><div class="quick-btn-sub">Chamada do gado</div></div>
+        <div class="quick-btn" onclick="workerNav('mort-page',null)"><div class="quick-btn-icon">💀</div><div class="quick-btn-label">Óbito</div><div class="quick-btn-sub">Registrar morte</div></div>
+        <div class="quick-btn" onclick="workerNav('nasc-list-page',null)"><div class="quick-btn-icon">📊</div><div class="quick-btn-label">Nascimentos</div><div class="quick-btn-sub">Ver histórico</div></div>
       </div>
       <div class="section-title">Como funciona offline</div>
       <div class="card">
@@ -252,8 +278,71 @@
       </div>
     </div>
 
-    <!-- NASCIMENTOS LIST -->
-    <div id="wk-page-nasc-list-page" class="page wk-page">
+    <!-- CONFERÊNCIA -->
+    <div id="wk-page-conferencia-page" class="page wk-page">
+      <!-- Setup -->
+      <div id="conf-setup">
+        <div class="section-title">Nova conferência</div>
+        <div class="card">
+          <div class="form-grid">
+            <div class="fg"><label>Lote / Pasto</label><input id="conf-lote" placeholder="ex: Pasto 1, Curral A"/></div>
+            <div class="fg"><label>Total esperado</label><input type="number" id="conf-total" placeholder="ex: 45"/></div>
+          </div>
+          <button class="btn btn-primary" onclick="iniciarConferencia()">Iniciar chamada</button>
+        </div>
+      </div>
+
+      <!-- Chamada em andamento -->
+      <div id="conf-chamada" class="hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+          <div>
+            <div style="font-size:16px;font-weight:700" id="conf-lote-display">—</div>
+            <div style="font-size:12px;color:#888">Total esperado: <span id="conf-total-display">—</span></div>
+          </div>
+          <button class="btn btn-sm btn-danger" onclick="finalizarConferencia()">Finalizar</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem">
+          <div class="metric-card" style="text-align:center">
+            <div class="metric-lbl">Presentes</div>
+            <div class="metric-val" style="color:#0F6E56" id="conf-presentes">0</div>
+          </div>
+          <div class="metric-card" style="text-align:center">
+            <div class="metric-lbl">Ausentes</div>
+            <div class="metric-val" style="color:#dc2626" id="conf-ausentes">0</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px">Digite o brinco do animal</div>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <input id="conf-brinco-input" placeholder="ex: 0042" style="flex:1;padding:12px 14px;border:2px solid #0F6E56;border-radius:10px;font-size:16px;font-weight:600;outline:none;background:#fff;color:#1a1a1a" autocomplete="off" autocorrect="off" autocapitalize="characters"/>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" style="flex:2" onclick="registrarAnimal('presente')">✓ Presente</button>
+            <button class="btn btn-danger" style="flex:1;border:1.5px solid #fca5a5" onclick="marcarAusente()">✗ Ausente</button>
+          </div>
+        </div>
+
+        <div class="section-title">Últimos registrados</div>
+        <div class="card" style="max-height:300px;overflow-y:auto">
+          <div id="conf-log"><div class="empty" style="padding:1rem"><div class="empty-text">Nenhum animal registrado ainda.</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MORTALIDADE WORKER -->
+    <div id="wk-page-mort-page" class="page wk-page">
+      <div class="section-title">Registrar óbito</div>
+      <div class="card" style="text-align:center;padding:1.5rem;cursor:pointer" onclick="openSheet('sheet-mortalidade')">
+        <div style="font-size:40px;margin-bottom:8px">💀</div>
+        <div style="font-size:14px;font-weight:700">Registrar óbito de animal</div>
+        <div style="font-size:12px;color:#888;margin-top:4px">Toque para abrir o formulário</div>
+      </div>
+      <div class="alert al-amber" style="margin-top:0">
+        ⚠️ Ao registrar o óbito, o animal é automaticamente removido do rebanho ativo.
+      </div>
+    </div>
       <div class="section-title">Nascimentos registrados</div>
       <div class="card"><div id="w-nasc-list"><div class="empty"><div class="empty-icon">🐄</div><div class="empty-text">Carregando...</div></div></div></div>
     </div>
@@ -266,9 +355,17 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
       <span>Início</span>
     </button>
+    <button class="nav-item wk-nav-item" onclick="workerNav('conferencia-page',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <span>Chamada</span>
+    </button>
     <button class="nav-item wk-nav-item" onclick="workerNav('nasc-list-page',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       <span>Nascimentos</span>
+    </button>
+    <button class="nav-item wk-nav-item" onclick="workerNav('mort-page',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      <span>Óbito</span>
     </button>
   </div>
 </div>
@@ -363,6 +460,32 @@
     </div>
     <p style="font-size:12px;color:#888;margin-bottom:12px">A data prevista de parto (283 dias) é calculada automaticamente.</p>
     <button class="btn btn-primary" onclick="wSaveRepro()">Salvar evento</button>
+  </div>
+</div>
+
+<!-- Sheet mortalidade -->
+<div id="sheet-mortalidade" class="overlay-bg" onclick="if(event.target===this)closeSheet('sheet-mortalidade')">
+  <div class="overlay-sheet">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">Registrar óbito</div>
+    <div class="alert al-red" style="margin-bottom:1rem">⚠️ O animal será removido do rebanho ativo automaticamente.</div>
+    <div class="form-grid">
+      <div class="fg"><label>Brinco do animal *</label><input id="w-m-brinco" placeholder="ex: 0042"/></div>
+      <div class="fg"><label>Nome</label><input id="w-m-nome" placeholder="ex: Mimosa"/></div>
+      <div class="fg"><label>Data do óbito *</label><input type="date" id="w-m-data"/></div>
+      <div class="fg"><label>Causa</label><select id="w-m-causa">
+        <option>Não identificada</option>
+        <option>Doença</option>
+        <option>Acidente</option>
+        <option>Predador</option>
+        <option>Parto</option>
+        <option>Desconhecida</option>
+      </select></div>
+      <div class="fg"><label>Localização</label><input id="w-m-local" placeholder="ex: Pasto 3, Curral B"/></div>
+      <div class="fg"><label>Peso estimado (kg)</label><input type="number" id="w-m-peso" placeholder="ex: 420"/></div>
+      <div class="fg full"><label>Descrição / sintomas</label><textarea id="w-m-desc" placeholder="Descreva o que foi observado..."></textarea></div>
+    </div>
+    <button class="btn btn-primary" style="background:#dc2626;border-color:#dc2626" onclick="wSaveMortalidade()">Registrar óbito</button>
   </div>
 </div>
 

@@ -119,6 +119,8 @@ const App = (() => {
     if(page==='vaqueiros')loadVaqueiros();
     if(page==='relatorios')renderRelatorios();
     if(page==='config')renderConfig();
+    if(page==='conferencia')loadConferencias();
+    if(page==='mortalidade')loadMortalidade();
   }
 
   // ── DASHBOARD ──
@@ -432,9 +434,14 @@ const App = (() => {
     document.querySelectorAll('.wk-page').forEach(p=>p.classList.remove('active'));
     document.querySelectorAll('.wk-nav-item').forEach(b=>b.classList.remove('active'));
     document.getElementById('wk-page-'+page).classList.add('active');
-    btn.classList.add('active');
+    if(btn){btn.classList.add('active');}
     if(page==='home')updatePendingIndicator();
     if(page==='nasc-list-page')loadNascimentosWorker();
+    if(page==='conferencia-page'){
+      confAtiva=null;
+      document.getElementById('conf-setup').classList.remove('hidden');
+      document.getElementById('conf-chamada').classList.add('hidden');
+    }
   };
 
   async function loadNascimentosWorker(){
@@ -513,6 +520,185 @@ const App = (() => {
     // Calcular parto previsto (283 dias)
     const dataParto=new Date(dataEvento); dataParto.setDate(dataParto.getDate()+283);
     await wSave('reproducao',{femea_brinco:femea,tipo,touro_brinco:document.getElementById('w-rep-touro').value.trim(),semen:document.getElementById('w-rep-semen').value.trim(),data_evento:dataEvento,resultado:document.getElementById('w-rep-resultado').value,data_parto_previsto:dataParto.toISOString().slice(0,10),observacoes:document.getElementById('w-rep-obs').value.trim()},'','sheet-repro','Evento reprodutivo salvo!',['w-rep-femea','w-rep-touro','w-rep-semen','w-rep-obs']);
+  };
+
+  // ── CONFERÊNCIA DO GADO ──────────────────────────
+  let confAtiva = null;
+  let confAnimaisRegistrados = [];
+
+  async function loadConferencias(){
+    try{
+      const rows = await api('GET','/api/conferencias');
+      const el = document.getElementById('conf-list-owner');
+      if(!el) return;
+      el.innerHTML = rows.length ? rows.map(c=>`
+        <div class="list-item">
+          <div class="list-icon" style="background:${c.status==='finalizada'?'#d1fae5':'#fef3c7'}">${c.status==='finalizada'?'✅':'📋'}</div>
+          <div class="list-body">
+            <div class="list-title">Lote: ${c.lote} — ${fmtData(c.data)}</div>
+            <div class="list-sub">
+              <span class="badge b-green">${c.confirmados||c.total_presentes} presentes</span>
+              ${(c.ausentes||c.total_ausentes)>0?`<span class="badge b-red" style="margin-left:4px">${c.ausentes||c.total_ausentes} ausentes</span>`:''}
+              <span class="badge ${c.status==='finalizada'?'b-green':'b-amber'}" style="margin-left:4px">${c.status==='finalizada'?'Finalizada':'Em andamento'}</span>
+            </div>
+            <div class="list-sub">Por: ${c.vaqueiro_nome||'Proprietário'}</div>
+          </div>
+          ${c.status!=='finalizada'?`<button class="btn btn-sm btn-danger" onclick="deletarConferencia(${c.id})">×</button>`:''}
+        </div>`).join('') :
+        '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Nenhuma conferência realizada ainda.</div></div>';
+    }catch(e){}
+  }
+
+  window.deletarConferencia = async(id)=>{
+    if(!confirm('Excluir esta conferência?'))return;
+    await api('DELETE',`/api/conferencias/${id}`);
+    loadConferencias();
+    toast('Conferência excluída.');
+  };
+
+  // Worker — iniciar conferência
+  window.iniciarConferencia = async()=>{
+    const lote = document.getElementById('conf-lote').value.trim()||'Geral';
+    const total = parseInt(document.getElementById('conf-total').value)||0;
+    try{
+      const data = await api('POST','/api/conferencias',{lote, total_esperado:total});
+      confAtiva = data.id;
+      confAnimaisRegistrados = [];
+      document.getElementById('conf-lote-display').textContent = lote;
+      document.getElementById('conf-total-display').textContent = total||'—';
+      document.getElementById('conf-presentes').textContent = '0';
+      document.getElementById('conf-ausentes').textContent = '0';
+      document.getElementById('conf-brinco-input').value = '';
+      document.getElementById('conf-setup').classList.add('hidden');
+      document.getElementById('conf-chamada').classList.remove('hidden');
+      document.getElementById('conf-log').innerHTML = '';
+      toast(`Conferência iniciada — Lote: ${lote}`);
+    }catch(e){toast('Erro: '+e.message);}
+  };
+
+  window.registrarAnimal = async(statusForcar)=>{
+    if(!confAtiva){toast('Inicie uma conferência primeiro.');return;}
+    const input = document.getElementById('conf-brinco-input');
+    const brinco = input.value.trim().toUpperCase();
+    if(!brinco){toast('Digite o brinco do animal.');return;}
+    const status = statusForcar || 'presente';
+    try{
+      const data = await api('POST',`/api/conferencias/${confAtiva}/registrar`,{brinco, status});
+      input.value='';
+      input.focus();
+      document.getElementById('conf-presentes').textContent = data.presentes;
+      document.getElementById('conf-ausentes').textContent = data.ausentes;
+      // Log visual
+      const log = document.getElementById('conf-log');
+      const item = document.createElement('div');
+      item.style.cssText=`display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0ede8;animation:fadein .2s ease`;
+      item.innerHTML=`
+        <div style="width:32px;height:32px;border-radius:50%;background:${status==='presente'?'#d1fae5':'#fee2e2'};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${status==='presente'?'✓':'✗'}</div>
+        <div>
+          <div style="font-size:13px;font-weight:600">${brinco}${data.animal_nome?' — '+data.animal_nome:''}</div>
+          <div style="font-size:11px;color:#888">${status==='presente'?'Presente':'Ausente'} · ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
+        </div>`;
+      log.insertBefore(item, log.firstChild);
+      confAnimaisRegistrados.push({brinco, status});
+    }catch(e){toast('Erro: '+e.message);}
+  };
+
+  window.marcarAusente = ()=> registrarAnimal('ausente');
+
+  window.finalizarConferencia = async()=>{
+    if(!confAtiva)return;
+    if(!confirm('Finalizar a conferência? Ela não poderá ser editada depois.'))return;
+    try{
+      await api('PATCH',`/api/conferencias/${confAtiva}/finalizar`);
+      const pres = document.getElementById('conf-presentes').textContent;
+      const aus  = document.getElementById('conf-ausentes').textContent;
+      toast(`Conferência finalizada! ${pres} presentes, ${aus} ausentes.`);
+      confAtiva = null;
+      document.getElementById('conf-setup').classList.remove('hidden');
+      document.getElementById('conf-chamada').classList.add('hidden');
+    }catch(e){toast('Erro: '+e.message);}
+  };
+
+  // Enter no campo de brinco
+  document.addEventListener('DOMContentLoaded',()=>{
+    const inp = document.getElementById('conf-brinco-input');
+    if(inp) inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();registrarAnimal('presente');} });
+  });
+
+  // ── MORTALIDADE ──────────────────────────────────
+  async function loadMortalidade(){
+    try{
+      const rows = await api('GET','/api/mortalidade');
+      const el = document.getElementById('mort-list');
+      if(!el) return;
+      const causaBadge = {
+        'Doença':'b-red','Acidente':'b-amber','Predador':'b-red',
+        'Parto':'b-pink','Desconhecida':'b-gray','Não identificada':'b-gray'
+      };
+      el.innerHTML = rows.length ? rows.map(m=>`
+        <div class="list-item">
+          <div class="list-icon" style="background:#fee2e2">💀</div>
+          <div class="list-body">
+            <div class="list-title">${m.animal_brinco}${m.animal_nome?' — '+m.animal_nome:''}</div>
+            <div class="list-sub">
+              <span class="badge ${causaBadge[m.causa]||'b-gray'}">${m.causa}</span>
+              · ${fmtData(m.data_obito)}
+              ${m.peso_estimado?' · '+m.peso_estimado+' kg':''}
+            </div>
+            ${m.localizacao?`<div class="list-sub">📍 ${m.localizacao}</div>`:''}
+            ${m.descricao?`<div class="list-sub">${m.descricao}</div>`:''}
+            <div class="list-sub">Por: ${m.vaqueiro_nome||'Proprietário'}</div>
+          </div>
+          <button class="btn btn-sm btn-danger" onclick="deletarObito(${m.id})">×</button>
+        </div>`).join('') :
+        '<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Nenhum óbito registrado.</div></div>';
+      // Estatísticas
+      const statEl = document.getElementById('mort-stats');
+      if(statEl && rows.length){
+        const causas = {};
+        rows.forEach(r=>causas[r.causa]=(causas[r.causa]||0)+1);
+        statEl.innerHTML = Object.entries(causas).map(([k,v])=>
+          `<div class="stat-row" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0ede8"><span>${k}</span><span class="badge b-red">${v}</span></div>`
+        ).join('');
+      }
+    }catch(e){}
+  }
+
+  window.deletarObito = async(id)=>{
+    if(!confirm('Excluir este registro de óbito?'))return;
+    await api('DELETE',`/api/mortalidade/${id}`);
+    loadMortalidade();
+    toast('Registro excluído.');
+  };
+
+  window.wSaveMortalidade = async()=>{
+    const brinco = document.getElementById('w-m-brinco').value.trim();
+    if(!brinco){toast('Informe o brinco do animal.');return;}
+    const data = {
+      animal_brinco: brinco,
+      animal_nome: document.getElementById('w-m-nome').value.trim(),
+      data_obito: document.getElementById('w-m-data').value || hoje(),
+      causa: document.getElementById('w-m-causa').value,
+      descricao: document.getElementById('w-m-desc').value.trim(),
+      localizacao: document.getElementById('w-m-local').value.trim(),
+      peso_estimado: parseFloat(document.getElementById('w-m-peso').value)||null
+    };
+    if(Sync.isOnline()){
+      try{
+        await api('POST','/api/mortalidade', data);
+        ['w-m-brinco','w-m-nome','w-m-data','w-m-desc','w-m-local','w-m-peso'].forEach(x=>document.getElementById(x).value='');
+        document.getElementById('w-m-data').value = hoje();
+        closeSheet('sheet-mortalidade');
+        toast('Óbito registrado com sucesso.');
+      }catch(e){toast('Erro: '+e.message);}
+    } else {
+      await LocalDB.add('mortalidade', data);
+      ['w-m-brinco','w-m-nome','w-m-desc','w-m-local','w-m-peso'].forEach(x=>document.getElementById(x).value='');
+      document.getElementById('w-m-data').value = hoje();
+      closeSheet('sheet-mortalidade');
+      toast('Óbito salvo — será enviado ao conectar.');
+      updatePendingIndicator();
+    }
   };
 
   // ── BOOT ──

@@ -1,5 +1,5 @@
 const LocalDB = (() => {
-  const DB_NAME='fazendapro', DB_VERSION=2;
+  const DB_NAME='fazendapro', DB_VERSION=3;
   let db=null;
   function uuid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
   function open(){
@@ -8,7 +8,7 @@ const LocalDB = (() => {
       const req=indexedDB.open(DB_NAME,DB_VERSION);
       req.onupgradeneeded=e=>{
         const d=e.target.result;
-        ['animais','pesagens','saude','nascimentos','reproducao'].forEach(s=>{
+        ['animais','pesagens','saude','nascimentos','reproducao','mortalidade'].forEach(s=>{
           if(!d.objectStoreNames.contains(s)){
             const st=d.createObjectStore(s,{keyPath:'sync_id'});
             st.createIndex('synced','synced',{unique:false});
@@ -50,12 +50,12 @@ const LocalDB = (() => {
     });
   }
   async function countPending(){
-    const stores=['animais','pesagens','saude','nascimentos','reproducao'];
+    const stores=['animais','pesagens','saude','nascimentos','reproducao','mortalidade'];
     const counts=await Promise.all(stores.map(s=>getPending(s)));
     return counts.reduce((a,c)=>a+c.length,0);
   }
   async function clearSynced(){
-    const stores=['animais','pesagens','saude','nascimentos','reproducao'];
+    const stores=['animais','pesagens','saude','nascimentos','reproducao','mortalidade'];
     for(const store of stores){
       const all=await getAll(store);
       const d=await open();
