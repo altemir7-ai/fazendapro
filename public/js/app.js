@@ -115,6 +115,10 @@ const App = (() => {
       updatePendingIndicator();
       Sync.updateStatusBar();
       Sync.run();
+      // Carregar nome da fazenda para o vaqueiro
+      api('GET','/api/config/publica').then(c=>{
+        if(c.fazenda_nome) document.getElementById('worker-fazenda-nome').textContent=c.fazenda_nome;
+      }).catch(()=>{});
       // Carregar datalists para o vaqueiro
       api('GET','/api/animais/lista').then(animais=>{
         animaisCache = animais;

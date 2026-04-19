@@ -51,6 +51,14 @@ app.post('/api/login', (req,res) => {
 app.post('/api/logout', (req,res) => { req.session.destroy(); res.json({ok:true}); });
 
 // ── CONFIG ────────────────────────────────────────
+// Rota pública — nome da fazenda para vaqueiro
+app.get('/api/config/publica', authAny, (req,res) => {
+  const nome = db.prepare("SELECT valor FROM config WHERE chave='fazenda_nome'").get();
+  const raca = db.prepare("SELECT valor FROM config WHERE chave='fazenda_raca'").get();
+  const foco = db.prepare("SELECT valor FROM config WHERE chave='fazenda_foco'").get();
+  res.json({fazenda_nome:nome?.valor||'FazendaPro', fazenda_raca:raca?.valor||'Nelore', fazenda_foco:foco?.valor||'Corte'});
+});
+
 app.get('/api/config', authOwner, (req,res) => {
   const rows = db.prepare('SELECT chave,valor FROM config').all();
   const cfg = {};
