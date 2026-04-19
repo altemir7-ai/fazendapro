@@ -226,6 +226,107 @@ app.get('/api/saude', authOwner, (req,res) => {
   res.json(db.prepare(`SELECT s.*,v.nome as vaqueiro_nome FROM saude s LEFT JOIN vaqueiros v ON s.registrado_por=v.id ORDER BY s.data DESC`).all());
 });
 
+app.post('/api/saude', authAny, (req,res) => {
+  const {animal_brinco,tipo,produto,produto_id,dose,data,proxima_dose,custo,observacoes} = req.body;
+  if(!animal_brinco) return res.status(400).json({error:'Informe o brinco do animal.'});
+  const wId = req.session.user.role==='worker' ? req.session.user.id : null;
+  const sid = Date.now().toString(36)+Math.random().toString(36).slice(2);
+  db.transaction(()=>{
+    db.prepare('INSERT OR IGNORE INTO saude (animal_brinco,tipo,produto,dose,data,proxima_dose,custo,observacoes,registrado_por,sync_id) VALUES (?,?,?,?,?,?,?,?,?,?)').run(
+      animal_brinco,tipo||'Vacinação',produto||'',dose||'',
+      data||new Date().toISOString().slice(0,10),proxima_dose||null,
+      custo||0,observacoes||'',wId,sid
+    );
+    if(produto_id) db.prepare('UPDATE produtos SET estoque_atual=MAX(0,estoque_atual-1) WHERE id=?').run(produto_id);
+    if(custo>0){
+      db.prepare('INSERT INTO financeiro (tipo,categoria,valor,data,observacao,registrado_por) VALUES (?,?,?,?,?,?)').run(
+        'saida','Medicamento',custo,data||new Date().toISOString().slice(0,10),
+        `${tipo||'Vacinação'}: ${produto||''} — animal ${animal_brinco}`,wId
+      );
+    }
+    if(wId) addFeed(wId,'Saúde',`${tipo||'Vacinação'} em ${animal_brinco}${produto?' ('+produto+')':''}`, 'amber');
+  })();
+  res.json({ok:true});
+});
+
+// ── PRODUTOS / VACINAS ────────────────────────────
+app.get('/api/produtos', authAny, (req,res) => {
+  res.json(db.prepare('SELECT * FROM produtos WHERE ativo=1 ORDER BY tipo,nome').all());
+});
+
+app.post('/api/produtos', authOwner, (req,res) => {
+  const {nome,tipo,dose,intervalo_dias,custo_unitario,estoque_atual,estoque_minimo,fabricante,observacoes} = req.body;
+  if(!nome?.trim()) return res.status(400).json({error:'Informe o nome do produto.'});
+  const info = db.prepare('INSERT INTO produtos (nome,tipo,dose,intervalo_dias,custo_unitario,estoque_atual,estoque_minimo,fabricante,observacoes) VALUES (?,?,?,?,?,?,?,?,?)').run(
+    nome.trim(), tipo||'Vacina', dose||'', intervalo_dias||180, custo_unitario||0,
+    estoque_atual||0, estoque_minimo||5, fabricante||'', observacoes||''
+  );
+  res.json({id:info.lastInsertRowid, nome:nome.trim()});
+});
+
+app.patch('/api/produtos/:id', authOwner, (req,res) => {
+  const {nome,tipo,dose,intervalo_dias,custo_unitario,estoque_atual,estoque_minimo,fabricante,observacoes} = req.body;
+  db.prepare('UPDATE produtos SET nome=?,tipo=?,dose=?,intervalo_dias=?,custo_unitario=?,estoque_atual=?,estoque_minimo=?,fabricante=?,observacoes=? WHERE id=?').run(
+    nome, tipo, dose||'', intervalo_dias||180, custo_unitario||0,
+    estoque_atual||0, estoque_minimo||5, fabricante||'', observacoes||'', req.params.id
+  );
+  res.json({ok:true});
+});
+
+app.delete('/api/produtos/:id', authOwner, (req,res) => {
+  db.prepare('UPDATE produtos SET ativo=0 WHERE id=?').run(req.params.id);
+  res.json({ok:true});
+});
+
+// ── LIMPAR FEED ───────────────────────────────────
+app.delete('/api/feed/limpar', authOwner, (req,res) => {
+  db.prepare('DELETE FROM feed').run();
+  res.json({ok:true});
+});
+
+// ── HISTÓRICO DO ANIMAL ───────────────────────────
+app.get('/api/animais/:brinco/historico', authAny, (req,res) => {
+  const brinco = req.params.brinco;
+  const animal = db.prepare('SELECT * FROM animais WHERE brinco=?').get(brinco);
+  if(!animal) return res.status(404).json({error:'Animal não encontrado.'});
+  const pesagens   = db.prepare('SELECT * FROM pesagens WHERE animal_brinco=? ORDER BY data DESC').all(brinco);
+  const saude      = db.prepare('SELECT * FROM saude WHERE animal_brinco=? ORDER BY data DESC').all(brinco);
+  const nascimento = db.prepare('SELECT * FROM nascimentos WHERE mae_brinco=? OR brinco_bezerro=? ORDER BY data_nascimento DESC').all(brinco, brinco);
+  const repro      = db.prepare('SELECT * FROM reproducao WHERE femea_brinco=? ORDER BY data_evento DESC').all(brinco);
+  res.json({animal, pesagens, saude, nascimento, repro});
+});
+
+// ── LOTE DE VACINAÇÃO ─────────────────────────────
+app.post('/api/saude/lote', authAny, (req,res) => {
+  const {brincos, tipo, produto_id, produto_nome, dose, data, proxima_dose, custo_por_animal, observacoes} = req.body;
+  if(!brincos?.length) return res.status(400).json({error:'Informe ao menos um animal.'});
+  const wId = req.session.user.role==='worker' ? req.session.user.id : null;
+  const ins = db.prepare('INSERT OR IGNORE INTO saude (animal_brinco,tipo,produto,dose,data,proxima_dose,custo,observacoes,registrado_por,sync_id) VALUES (?,?,?,?,?,?,?,?,?,?)');
+  let inseridos = 0;
+  const uuid = () => Date.now().toString(36)+Math.random().toString(36).slice(2);
+
+  db.transaction(() => {
+    for(const brinco of brincos){
+      const i = ins.run(brinco, tipo||'Vacinação', produto_nome||'', dose||'', data||new Date().toISOString().slice(0,10), proxima_dose||null, custo_por_animal||0, observacoes||'', wId, uuid());
+      if(i.changes>0) inseridos++;
+    }
+    // Baixar estoque do produto
+    if(produto_id && inseridos>0){
+      db.prepare('UPDATE produtos SET estoque_atual=MAX(0,estoque_atual-?) WHERE id=?').run(inseridos, produto_id);
+    }
+    // Lançar custo no financeiro
+    const custoTotal = (custo_por_animal||0) * inseridos;
+    if(custoTotal>0){
+      db.prepare('INSERT INTO financeiro (tipo,categoria,valor,data,observacao,registrado_por) VALUES (?,?,?,?,?,?)').run(
+        'saida','Medicamento', custoTotal, data||new Date().toISOString().slice(0,10),
+        `Vacinação em lote: ${produto_nome||tipo} — ${inseridos} animais`, wId
+      );
+    }
+    if(wId) addFeed(wId,'Saúde',`Vacinação em lote: ${produto_nome||tipo} em ${inseridos} animais`,'amber');
+  })();
+  res.json({ok:true, inseridos});
+});
+
 // ── FINANCEIRO ────────────────────────────────────
 app.get('/api/financeiro', authOwner, (req,res) => {
   res.json(db.prepare(`SELECT f.*,v.nome as vaqueiro_nome FROM financeiro f LEFT JOIN vaqueiros v ON f.registrado_por=v.id ORDER BY f.data DESC`).all());

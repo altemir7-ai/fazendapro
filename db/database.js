@@ -128,6 +128,21 @@ db.exec(`
     FOREIGN KEY (registrado_por) REFERENCES vaqueiros(id)
   );
 
+  CREATE TABLE IF NOT EXISTS produtos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    tipo TEXT DEFAULT 'Vacina',
+    dose TEXT DEFAULT '',
+    intervalo_dias INTEGER DEFAULT 180,
+    custo_unitario REAL DEFAULT 0,
+    estoque_atual INTEGER DEFAULT 0,
+    estoque_minimo INTEGER DEFAULT 5,
+    fabricante TEXT DEFAULT '',
+    observacoes TEXT DEFAULT '',
+    ativo INTEGER DEFAULT 1,
+    criado_em TEXT DEFAULT (date('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS feed (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     vaqueiro_id INTEGER,

@@ -77,7 +77,10 @@
 
     <!-- FEED -->
     <div id="op-feed" class="page owner-page">
-      <div class="section-title">Feed ao vivo</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+        <div class="section-title" style="margin:0">Feed ao vivo</div>
+        <button class="btn btn-sm btn-danger" onclick="limparFeed()">Limpar tudo</button>
+      </div>
       <div class="card"><div id="feed-list"></div></div>
     </div>
 
@@ -153,6 +156,15 @@
       <div class="card"><div id="mort-list"></div></div>
     </div>
 
+    <!-- PRODUTOS -->
+    <div id="op-produtos" class="page owner-page">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+        <div class="section-title" style="margin:0">Produtos cadastrados</div>
+        <button class="btn btn-sm btn-primary" style="background:#0F6E56;color:#fff;border-color:#0F6E56" onclick="showAddProduto()">+ Cadastrar</button>
+      </div>
+      <div id="produtos-list"></div>
+    </div>
+
     <!-- RELATÓRIOS -->
     <div id="op-relatorios" class="page owner-page">
       <div class="section-title">Exportar dados</div>
@@ -221,6 +233,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       <span>Vaqueiros</span>
     </button>
+    <button class="nav-item owner-nav-item" onclick="ownerNav('produtos',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>
+      <span>Produtos</span>
+    </button>
     <button class="nav-item owner-nav-item" onclick="ownerNav('relatorios',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       <span>Relatórios</span>
@@ -269,6 +285,7 @@
         <div class="quick-btn" onclick="openSheet('sheet-pesagem')"><div class="quick-btn-icon">⚖️</div><div class="quick-btn-label">Pesagem</div><div class="quick-btn-sub">Registrar peso</div></div>
         <div class="quick-btn" onclick="openSheet('sheet-saude')"><div class="quick-btn-icon">💉</div><div class="quick-btn-label">Saúde</div><div class="quick-btn-sub">Vacina / tratamento</div></div>
         <div class="quick-btn" onclick="openSheet('sheet-repro')"><div class="quick-btn-icon">🔄</div><div class="quick-btn-label">Reprodução</div><div class="quick-btn-sub">Cobertura / gestação</div></div>
+        <div class="quick-btn" onclick="abrirLote()"><div class="quick-btn-icon">💉</div><div class="quick-btn-label">Vacinação em lote</div><div class="quick-btn-sub">Vários animais</div></div>
         <div class="quick-btn" onclick="workerNav('conferencia-page',null)"><div class="quick-btn-icon">📋</div><div class="quick-btn-label">Conferência</div><div class="quick-btn-sub">Chamada do gado</div></div>
         <div class="quick-btn" onclick="workerNav('mort-page',null)"><div class="quick-btn-icon">💀</div><div class="quick-btn-label">Óbito</div><div class="quick-btn-sub">Registrar morte</div></div>
         <div class="quick-btn" onclick="workerNav('nasc-list-page',null)"><div class="quick-btn-icon">📊</div><div class="quick-btn-label">Nascimentos</div><div class="quick-btn-sub">Ver histórico</div></div>
@@ -424,7 +441,10 @@
     <div class="overlay-handle"></div>
     <div class="overlay-title">Registrar pesagem</div>
     <div class="form-grid">
-      <div class="fg"><label>Brinco do animal *</label><input id="w-p-id" placeholder="ex: 0042"/></div>
+      <div class="fg"><label>Brinco do animal *</label>
+        <input id="w-p-id" placeholder="ex: 0042" list="lista-animais-pesagem" autocomplete="off"/>
+        <datalist id="lista-animais-pesagem"></datalist>
+      </div>
       <div class="fg"><label>Peso (kg) *</label><input type="number" id="w-p-peso" placeholder="450"/></div>
       <div class="fg"><label>Data</label><input type="date" id="w-p-data"/></div>
       <div class="fg"><label>Condição corporal</label><select id="w-p-cc"><option>1 — Muito magro</option><option>2 — Magro</option><option>3 (ideal)</option><option>4 — Gordo</option><option>5 — Muito gordo</option></select></div>
@@ -439,13 +459,20 @@
     <div class="overlay-handle"></div>
     <div class="overlay-title">Registrar procedimento de saúde</div>
     <div class="form-grid">
-      <div class="fg"><label>Brinco do animal *</label><input id="w-s-id" placeholder="ex: 0042"/></div>
+      <div class="fg"><label>Brinco do animal *</label>
+        <input id="w-s-id" placeholder="ex: 0042" list="lista-animais-saude" autocomplete="off"/>
+        <datalist id="lista-animais-saude"></datalist>
+      </div>
       <div class="fg"><label>Tipo</label><select id="w-s-tipo"><option>Vacinação</option><option>Vermifugação</option><option>Carrapaticida</option><option>Tratamento</option><option>Exame</option><option>Cirurgia</option></select></div>
-      <div class="fg"><label>Produto</label><input id="w-s-desc" placeholder="ex: Febre Aftosa"/></div>
+      <div class="fg full"><label>Produto / vacina</label>
+        <input id="w-s-desc" placeholder="ex: Febre Aftosa" list="lista-produtos-saude" autocomplete="off" oninput="preencherDadosProduto(this.value)"/>
+        <datalist id="lista-produtos-saude"></datalist>
+        <input type="hidden" id="w-s-produto-id"/>
+      </div>
       <div class="fg"><label>Dose</label><input id="w-s-dose" placeholder="ex: 5 ml"/></div>
+      <div class="fg"><label>Custo (R$)</label><input type="number" id="w-s-custo" placeholder="0,00"/></div>
       <div class="fg"><label>Data</label><input type="date" id="w-s-data"/></div>
       <div class="fg"><label>Próxima dose</label><input type="date" id="w-s-prox"/></div>
-      <div class="fg"><label>Custo (R$)</label><input type="number" id="w-s-custo" placeholder="0,00"/></div>
       <div class="fg full"><label>Observações</label><textarea id="w-s-obs" placeholder="Sintomas, evolução..."></textarea></div>
     </div>
     <button class="btn btn-primary" onclick="wSaveSaude()">Salvar procedimento</button>
@@ -509,6 +536,67 @@
       <div class="fg full"><label>Observação</label><input id="fin-obs" placeholder="Nota opcional..."/></div>
     </div>
     <button class="btn btn-primary" onclick="addFin()">Registrar lançamento</button>
+  </div>
+</div>
+
+<div id="ov-produto" class="overlay-bg" onclick="if(event.target===this)fecharProduto()">
+  <div class="overlay-sheet">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title" id="ov-produto-titulo">Cadastrar produto</div>
+    <input type="hidden" id="prod-id"/>
+    <div class="form-grid">
+      <div class="fg full"><label>Nome do produto *</label><input id="prod-nome" placeholder="ex: Febre Aftosa"/></div>
+      <div class="fg"><label>Tipo</label><select id="prod-tipo"><option>Vacina</option><option>Vermífugo</option><option>Carrapaticida</option><option>Antibiótico</option><option>Vitamina</option><option>Outro</option></select></div>
+      <div class="fg"><label>Dose padrão</label><input id="prod-dose" placeholder="ex: 5 ml"/></div>
+      <div class="fg"><label>Intervalo (dias)</label><input type="number" id="prod-intervalo" placeholder="180"/></div>
+      <div class="fg"><label>Custo unitário (R$)</label><input type="number" id="prod-custo" placeholder="0,00"/></div>
+      <div class="fg"><label>Estoque atual (doses)</label><input type="number" id="prod-estoque" placeholder="0"/></div>
+      <div class="fg"><label>Estoque mínimo</label><input type="number" id="prod-estoque-min" placeholder="5"/></div>
+      <div class="fg"><label>Fabricante</label><input id="prod-fabricante" placeholder="ex: Zoetis"/></div>
+      <div class="fg full"><label>Observações</label><textarea id="prod-obs" placeholder="Informações adicionais..."></textarea></div>
+    </div>
+    <div class="login-err" id="prod-err"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-primary" style="flex:1;padding:12px" onclick="salvarProduto()">Salvar produto</button>
+      <button class="btn" onclick="fecharProduto()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet lote de vacinação -->
+<div id="sheet-lote" class="overlay-bg" onclick="if(event.target===this)closeSheet('sheet-lote')">
+  <div class="overlay-sheet">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">Vacinação em lote</div>
+    <div class="form-grid">
+      <div class="fg full"><label>Produto / vacina *</label>
+        <input id="lote-produto" placeholder="Selecione ou digite" list="lista-produtos-lote" autocomplete="off" oninput="preencherLoteProduto(this.value)"/>
+        <datalist id="lista-produtos-lote"></datalist>
+        <input type="hidden" id="lote-produto-id"/>
+      </div>
+      <div class="fg"><label>Tipo</label><select id="lote-tipo"><option>Vacinação</option><option>Vermifugação</option><option>Carrapaticida</option></select></div>
+      <div class="fg"><label>Dose</label><input id="lote-dose" placeholder="ex: 5 ml"/></div>
+      <div class="fg"><label>Data</label><input type="date" id="lote-data"/></div>
+      <div class="fg"><label>Próxima dose</label><input type="date" id="lote-prox"/></div>
+      <div class="fg"><label>Custo por animal (R$)</label><input type="number" id="lote-custo" placeholder="0,00"/></div>
+    </div>
+    <div class="section-title">Selecione os animais</div>
+    <div style="margin-bottom:8px;display:flex;gap:6px">
+      <button class="btn btn-sm" onclick="selecionarTodosLote(true)">Todos</button>
+      <button class="btn btn-sm" onclick="selecionarTodosLote(false)">Nenhum</button>
+      <span id="lote-count" style="font-size:12px;color:#888;margin-left:4px;align-self:center">0 selecionados</span>
+    </div>
+    <div id="lote-animais-lista" style="max-height:240px;overflow-y:auto;border:1px solid #e8e6e0;border-radius:10px;margin-bottom:12px"></div>
+    <button class="btn btn-primary" onclick="wSaveLote()">Aplicar em lote</button>
+  </div>
+</div>
+
+<!-- Modal histórico animal -->
+<div id="ov-historico" class="overlay-bg" onclick="if(event.target===this)fecharHistorico()">
+  <div class="overlay-sheet" style="max-height:85vh">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title" id="hist-titulo">Histórico do animal</div>
+    <div id="hist-content"></div>
   </div>
 </div>
 

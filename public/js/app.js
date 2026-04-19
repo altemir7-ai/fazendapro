@@ -115,6 +115,15 @@ const App = (() => {
       updatePendingIndicator();
       Sync.updateStatusBar();
       Sync.run();
+      // Carregar datalists para o vaqueiro
+      api('GET','/api/animais/lista').then(animais=>{
+        animaisCache = animais;
+        preencherDatalistsAnimais();
+      }).catch(()=>{});
+      api('GET','/api/produtos').then(prods=>{
+        produtosCache = prods;
+        preencherDatalistsProdutos();
+      }).catch(()=>{});
     }
   }
 
@@ -148,6 +157,7 @@ const App = (() => {
     if(page==='saude')loadSaude();
     if(page==='financeiro')loadFinanceiro();
     if(page==='vaqueiros')loadVaqueiros();
+    if(page==='produtos')loadProdutos();
     if(page==='relatorios')renderRelatorios();
     if(page==='config')renderConfig();
     if(page==='conferencia')loadConferencias();
@@ -231,6 +241,7 @@ const App = (() => {
           ${a.mae_brinco?`<div class="list-sub">Mãe: ${a.mae_brinco}${a.pai_brinco?' · Pai: '+a.pai_brinco:''}</div>`:''}
           <div class="list-sub">Por: ${a.vaqueiro_nome||'Proprietário'} · ${fmtData(a.criado_em)}</div>
         </div>
+        <button class="btn btn-sm" onclick="verHistorico('${a.brinco}','${(a.nome||'').replace(/'/g,"\\'")}')">Histórico</button>
         <button class="btn btn-sm btn-danger" onclick="deleteAnimal(${a.id},'${a.brinco}','${(a.nome||'').replace(/'/g,"\\'")}')">×</button>
       </div>`).join(''):'<div class="empty"><div class="empty-icon">🐄</div><div class="empty-text">Nenhum animal encontrado.</div></div>';
   }
@@ -592,7 +603,32 @@ const App = (() => {
   window.wSaveSaude=async()=>{
     const brinco=document.getElementById('w-s-id').value.trim();
     if(!brinco){toast('Informe o brinco do animal.');return;}
-    await wSave('saude',{animal_brinco:brinco,tipo:document.getElementById('w-s-tipo').value,produto:document.getElementById('w-s-desc').value.trim(),dose:document.getElementById('w-s-dose').value.trim(),data:document.getElementById('w-s-data').value||hoje(),proxima_dose:document.getElementById('w-s-prox').value||null,custo:parseFloat(document.getElementById('w-s-custo').value)||0,observacoes:document.getElementById('w-s-obs').value.trim()},'','sheet-saude','Procedimento salvo!',['w-s-id','w-s-desc','w-s-dose','w-s-prox','w-s-custo','w-s-obs']);
+    const produto=document.getElementById('w-s-desc').value.trim();
+    const produto_id=document.getElementById('w-s-produto-id').value||null;
+    const custo=parseFloat(document.getElementById('w-s-custo').value)||0;
+    const data_val=document.getElementById('w-s-data').value||hoje();
+    if(Sync.isOnline()){
+      try{
+        await api('POST','/api/saude',{
+          animal_brinco:brinco,tipo:document.getElementById('w-s-tipo').value,
+          produto,produto_id,dose:document.getElementById('w-s-dose').value.trim(),
+          data:data_val,proxima_dose:document.getElementById('w-s-prox').value||null,
+          custo,observacoes:document.getElementById('w-s-obs').value.trim()
+        });
+        ['w-s-id','w-s-desc','w-s-dose','w-s-prox','w-s-obs','w-s-custo','w-s-produto-id'].forEach(x=>document.getElementById(x).value='');
+        document.getElementById('w-s-data').value=hoje();
+        closeSheet('sheet-saude');
+        toast('Procedimento salvo!'+(custo>0?' Custo lançado no financeiro.':''));
+      }catch(e){toast('Erro: '+e.message);}
+    } else {
+      await wSave('saude',{
+        animal_brinco:brinco,tipo:document.getElementById('w-s-tipo').value,
+        produto,produto_id,dose:document.getElementById('w-s-dose').value.trim(),
+        data:data_val,proxima_dose:document.getElementById('w-s-prox').value||null,
+        custo,observacoes:document.getElementById('w-s-obs').value.trim()
+      },'','sheet-saude','Procedimento salvo — será enviado ao conectar.',
+      ['w-s-id','w-s-desc','w-s-dose','w-s-prox','w-s-obs','w-s-custo','w-s-produto-id']);
+    }
   };
 
   window.wSaveNascimento=async()=>{
@@ -937,6 +973,269 @@ const App = (() => {
           toast('Óbito salvo — será enviado ao conectar.');
           updatePendingIndicator();
         }
+      }
+    });
+  };
+
+  // ── PRODUTOS ──────────────────────────────────────
+  let produtosCache = [];
+
+  async function loadProdutos(){
+    try{
+      produtosCache = await api('GET','/api/produtos');
+      renderProdutos();
+      preencherDatalistsProdutos();
+    }catch(e){}
+  }
+
+  function renderProdutos(){
+    const el = document.getElementById('produtos-list');
+    if(!el) return;
+    const tipoBadge = {'Vacina':'b-blue','Vermífugo':'b-amber','Carrapaticida':'b-amber','Antibiótico':'b-red','Vitamina':'b-green','Outro':'b-gray'};
+    el.innerHTML = produtosCache.length ? produtosCache.map(p=>`
+      <div class="card" style="margin-bottom:.75rem">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:700">${p.nome}</div>
+            <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">
+              <span class="badge ${tipoBadge[p.tipo]||'b-gray'}">${p.tipo}</span>
+              ${p.dose?`<span class="badge b-gray">${p.dose}</span>`:''}
+              ${p.intervalo_dias?`<span class="badge b-teal">A cada ${p.intervalo_dias}d</span>`:''}
+            </div>
+            <div style="font-size:12px;color:#888;margin-top:6px">
+              ${p.custo_unitario>0?`Custo: R$ ${fmtBR(p.custo_unitario)} · `:''}
+              Estoque: <strong style="color:${p.estoque_atual<=p.estoque_minimo?'#dc2626':'#0F6E56'}">${p.estoque_atual} doses</strong>
+              ${p.estoque_atual<=p.estoque_minimo?'<span class="badge b-red" style="margin-left:4px">Estoque baixo!</span>':''}
+            </div>
+            ${p.fabricante?`<div style="font-size:12px;color:#888">Fabricante: ${p.fabricante}</div>`:''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+            <button class="btn btn-sm" onclick="editarProduto(${p.id})">Editar</button>
+            <button class="btn btn-sm btn-danger" onclick="excluirProduto(${p.id},'${p.nome.replace(/'/g,"\\'")}')">Excluir</button>
+          </div>
+        </div>
+      </div>`).join('') :
+      '<div class="empty"><div class="empty-icon">💉</div><div class="empty-text">Nenhum produto cadastrado.<br>Cadastre vacinas e medicamentos para facilitar o registro.</div></div>';
+  }
+
+  function preencherDatalistsProdutos(){
+    const ids = ['lista-produtos-saude','lista-produtos-lote'];
+    ids.forEach(id=>{
+      const dl = document.getElementById(id);
+      if(!dl) return;
+      dl.innerHTML = produtosCache.map(p=>`<option value="${p.nome}" data-id="${p.id}" data-dose="${p.dose||''}" data-custo="${p.custo_unitario||0}" data-intervalo="${p.intervalo_dias||180}">`).join('');
+    });
+  }
+
+  function preencherDatalistsAnimais(){
+    const ids = ['lista-animais-saude','lista-animais-pesagem'];
+    ids.forEach(id=>{
+      const dl = document.getElementById(id);
+      if(!dl) return;
+      dl.innerHTML = animaisCache.map(a=>`<option value="${a.brinco}">${a.nome?' — '+a.nome:''}</option>`).join('');
+    });
+  }
+
+  window.preencherDadosProduto = (nome)=>{
+    const p = produtosCache.find(x=>x.nome===nome);
+    if(!p) return;
+    document.getElementById('w-s-produto-id').value = p.id;
+    if(p.dose) document.getElementById('w-s-dose').value = p.dose;
+    if(p.custo_unitario) document.getElementById('w-s-custo').value = p.custo_unitario;
+    if(p.intervalo_dias && document.getElementById('w-s-data').value){
+      const d = new Date(document.getElementById('w-s-data').value);
+      d.setDate(d.getDate()+p.intervalo_dias);
+      document.getElementById('w-s-prox').value = d.toISOString().slice(0,10);
+    }
+  };
+
+  window.preencherLoteProduto = (nome)=>{
+    const p = produtosCache.find(x=>x.nome===nome);
+    if(!p) return;
+    document.getElementById('lote-produto-id').value = p.id;
+    if(p.dose) document.getElementById('lote-dose').value = p.dose;
+    if(p.custo_unitario) document.getElementById('lote-custo').value = p.custo_unitario;
+    if(p.intervalo_dias && document.getElementById('lote-data').value){
+      const d = new Date(document.getElementById('lote-data').value);
+      d.setDate(d.getDate()+p.intervalo_dias);
+      document.getElementById('lote-prox').value = d.toISOString().slice(0,10);
+    }
+  };
+
+  window.showAddProduto = ()=>{
+    document.getElementById('ov-produto-titulo').textContent = 'Cadastrar produto';
+    document.getElementById('prod-id').value = '';
+    ['prod-nome','prod-dose','prod-fabricante','prod-obs'].forEach(x=>document.getElementById(x).value='');
+    ['prod-intervalo','prod-custo','prod-estoque','prod-estoque-min'].forEach(x=>document.getElementById(x).value='');
+    document.getElementById('prod-err').textContent='';
+    document.getElementById('ov-produto').classList.add('show');
+    setTimeout(()=>document.getElementById('prod-nome').focus(),300);
+  };
+
+  window.editarProduto = (id)=>{
+    const p = produtosCache.find(x=>x.id===id);
+    if(!p) return;
+    document.getElementById('ov-produto-titulo').textContent = 'Editar produto';
+    document.getElementById('prod-id').value = p.id;
+    document.getElementById('prod-nome').value = p.nome;
+    document.getElementById('prod-tipo').value = p.tipo;
+    document.getElementById('prod-dose').value = p.dose||'';
+    document.getElementById('prod-intervalo').value = p.intervalo_dias||'';
+    document.getElementById('prod-custo').value = p.custo_unitario||'';
+    document.getElementById('prod-estoque').value = p.estoque_atual||'';
+    document.getElementById('prod-estoque-min').value = p.estoque_minimo||'';
+    document.getElementById('prod-fabricante').value = p.fabricante||'';
+    document.getElementById('prod-obs').value = p.observacoes||'';
+    document.getElementById('prod-err').textContent='';
+    document.getElementById('ov-produto').classList.add('show');
+  };
+
+  window.fecharProduto = ()=>{
+    document.getElementById('ov-produto').classList.remove('show');
+    document.getElementById('prod-err').textContent='';
+  };
+
+  window.salvarProduto = async()=>{
+    const nome = document.getElementById('prod-nome').value.trim();
+    const id = document.getElementById('prod-id').value;
+    if(!nome){document.getElementById('prod-err').textContent='Informe o nome do produto.';return;}
+    const body = {
+      nome, tipo:document.getElementById('prod-tipo').value,
+      dose:document.getElementById('prod-dose').value.trim(),
+      intervalo_dias:parseInt(document.getElementById('prod-intervalo').value)||180,
+      custo_unitario:parseFloat(document.getElementById('prod-custo').value)||0,
+      estoque_atual:parseInt(document.getElementById('prod-estoque').value)||0,
+      estoque_minimo:parseInt(document.getElementById('prod-estoque-min').value)||5,
+      fabricante:document.getElementById('prod-fabricante').value.trim(),
+      observacoes:document.getElementById('prod-obs').value.trim()
+    };
+    try{
+      if(id) await api('PATCH',`/api/produtos/${id}`,body);
+      else await api('POST','/api/produtos',body);
+      fecharProduto();
+      await loadProdutos();
+      toast(id?'Produto atualizado!':'Produto cadastrado!');
+    }catch(e){document.getElementById('prod-err').textContent=e.message;}
+  };
+
+  window.excluirProduto = (id,nome)=>{
+    Confirm.mostrar({
+      icone:'🗑️',titulo:'Excluir produto',
+      corpo:`Excluir <strong>${nome}</strong> do cadastro?`,
+      labelConfirmar:'Excluir',tipo:'danger',
+      callback:async()=>{ await api('DELETE',`/api/produtos/${id}`); await loadProdutos(); toast('Produto excluído.'); }
+    });
+  };
+
+  // ── LIMPAR FEED ──────────────────────────────────
+  window.limparFeed = ()=>{
+    Confirm.mostrar({
+      icone:'🗑️',titulo:'Limpar atividades',
+      corpo:'Deseja apagar todo o histórico de atividades?<br><br><span style="color:#dc2626">✗ Esta ação não pode ser desfeita.</span>',
+      labelConfirmar:'Limpar tudo',tipo:'danger',
+      callback:async()=>{ await api('DELETE','/api/feed/limpar'); loadFeed(); toast('Atividades limpas.'); }
+    });
+  };
+
+  // ── HISTÓRICO DO ANIMAL ──────────────────────────
+  window.verHistorico = async(brinco, nome)=>{
+    document.getElementById('hist-titulo').textContent = `${brinco}${nome?' — '+nome:''}`;
+    document.getElementById('hist-content').innerHTML = '<div style="text-align:center;padding:2rem;color:#888">Carregando...</div>';
+    document.getElementById('ov-historico').classList.add('show');
+    try{
+      const d = await api('GET',`/api/animais/${brinco}/historico`);
+      let html='';
+      // Dados do animal
+      html+=`<div class="metric-row" style="margin-bottom:.75rem">
+        <div class="metric-card"><div class="metric-lbl">Categoria</div><div style="font-size:16px;font-weight:700">${d.animal.categoria}</div></div>
+        <div class="metric-card"><div class="metric-lbl">Peso atual</div><div style="font-size:16px;font-weight:700">${d.animal.peso?d.animal.peso+' kg':'—'}</div></div>
+      </div>`;
+      // Pesagens
+      if(d.pesagens.length){
+        html+=`<div class="section-title">Pesagens (${d.pesagens.length})</div><div class="card">`;
+        html+=d.pesagens.map(p=>`<div class="list-item"><div class="list-icon" style="background:#dbeafe;font-size:14px">⚖️</div><div class="list-body"><div class="list-title">${p.peso} kg</div><div class="list-sub">${fmtData(p.data)} · CC: ${p.condicao_corporal}</div></div></div>`).join('');
+        html+='</div>';
+      }
+      // Saúde
+      if(d.saude.length){
+        html+=`<div class="section-title">Saúde (${d.saude.length})</div><div class="card">`;
+        html+=d.saude.map(s=>`<div class="list-item"><div class="list-icon" style="background:#fef3c7;font-size:14px">💉</div><div class="list-body"><div class="list-title">${s.tipo} — ${s.produto}</div><div class="list-sub">${fmtData(s.data)}${s.proxima_dose?' · Próxima: '+fmtData(s.proxima_dose):''}</div></div></div>`).join('');
+        html+='</div>';
+      }
+      // Reprodução
+      if(d.repro.length){
+        html+=`<div class="section-title">Reprodução (${d.repro.length})</div><div class="card">`;
+        html+=d.repro.map(r=>`<div class="list-item"><div class="list-icon" style="background:#fce7f3;font-size:14px">🔄</div><div class="list-body"><div class="list-title">${r.tipo}</div><div class="list-sub">${fmtData(r.data_evento)} · <span class="badge ${r.resultado==='Positivo'?'b-green':r.resultado==='Negativo'?'b-red':'b-amber'}">${r.resultado}</span></div></div></div>`).join('');
+        html+='</div>';
+      }
+      if(!d.pesagens.length && !d.saude.length && !d.repro.length){
+        html+='<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Nenhum registro encontrado para este animal.</div></div>';
+      }
+      document.getElementById('hist-content').innerHTML = html;
+    }catch(e){document.getElementById('hist-content').innerHTML=`<div class="empty"><div class="empty-text">Erro: ${e.message}</div></div>`;}
+  };
+  window.fecharHistorico = ()=>document.getElementById('ov-historico').classList.remove('show');
+
+  // ── LOTE DE VACINAÇÃO ────────────────────────────
+  window.abrirLote = async()=>{
+    document.getElementById('lote-produto').value='';
+    document.getElementById('lote-produto-id').value='';
+    document.getElementById('lote-dose').value='';
+    document.getElementById('lote-custo').value='';
+    document.getElementById('lote-data').value=hoje();
+    document.getElementById('lote-prox').value='';
+    // Carregar animais na lista
+    try{
+      const animais = await api('GET','/api/animais/lista').catch(()=>[]);
+      const el = document.getElementById('lote-animais-lista');
+      el.innerHTML = animais.map(a=>`
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #f0ede8;cursor:pointer">
+          <input type="checkbox" class="lote-check" value="${a.brinco}" onchange="atualizarContLote()" style="width:18px;height:18px;accent-color:#0F6E56;flex-shrink:0"/>
+          <div>
+            <div style="font-size:14px;font-weight:600">${a.brinco}${a.nome?' — '+a.nome:''}</div>
+            <div style="font-size:12px;color:#888">${a.categoria}${a.raca?' · '+a.raca:''}</div>
+          </div>
+        </label>`).join('');
+    }catch(e){}
+    atualizarContLote();
+    openSheet('sheet-lote');
+  };
+
+  window.atualizarContLote = ()=>{
+    const n = document.querySelectorAll('.lote-check:checked').length;
+    document.getElementById('lote-count').textContent = `${n} selecionado(s)`;
+  };
+
+  window.selecionarTodosLote = (sel)=>{
+    document.querySelectorAll('.lote-check').forEach(c=>c.checked=sel);
+    atualizarContLote();
+  };
+
+  window.wSaveLote = async()=>{
+    const brincos = [...document.querySelectorAll('.lote-check:checked')].map(c=>c.value);
+    if(!brincos.length){toast('Selecione ao menos um animal.');return;}
+    const produto = document.getElementById('lote-produto').value.trim();
+    if(!produto){toast('Informe o produto.');return;}
+    Confirm.mostrar({
+      icone:'💉',titulo:'Confirmar vacinação em lote',
+      corpo:`Aplicar <strong>${produto}</strong> em <strong>${brincos.length} animal(is)</strong>?${document.getElementById('lote-custo').value>0?`<br>Custo total: <strong>R$ ${fmtBR(parseFloat(document.getElementById('lote-custo').value)*brincos.length)}</strong>`:''}`,
+      labelConfirmar:'Aplicar',tipo:'primary',
+      callback:async()=>{
+        try{
+          const data = await api('POST','/api/saude/lote',{
+            brincos,tipo:document.getElementById('lote-tipo').value,
+            produto_id:document.getElementById('lote-produto-id').value||null,
+            produto_nome:produto,
+            dose:document.getElementById('lote-dose').value,
+            data:document.getElementById('lote-data').value||hoje(),
+            proxima_dose:document.getElementById('lote-prox').value||null,
+            custo_por_animal:parseFloat(document.getElementById('lote-custo').value)||0,
+            observacoes:'Vacinação em lote'
+          });
+          closeSheet('sheet-lote');
+          toast(`Vacinação aplicada em ${data.inseridos} animal(is)!`);
+          await loadProdutos();
+        }catch(e){toast('Erro: '+e.message);}
       }
     });
   };
