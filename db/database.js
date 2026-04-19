@@ -3,10 +3,13 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
 
-const dbDir = path.join(__dirname);
+// Sempre usar o disco persistente do Render — nunca perder dados
+const dbDir = process.env.RENDER ? '/opt/render/project/src/data' : path.join(__dirname);
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 
-const db = new Database(path.join(dbDir, 'fazenda.db'));
+const dbPath = path.join(dbDir, 'fazenda.db');
+console.log('Banco de dados em:', dbPath);
+const db = new Database(dbPath);
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS config (
