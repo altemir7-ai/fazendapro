@@ -521,10 +521,11 @@ const App = (() => {
   window.workerNav=(page,btn)=>{
     document.querySelectorAll('.wk-page').forEach(p=>p.classList.remove('active'));
     document.querySelectorAll('.wk-nav-item').forEach(b=>b.classList.remove('active'));
-    document.getElementById('wk-page-'+page).classList.add('active');
-    if(btn){btn.classList.add('active');}
-    if(page==='home')updatePendingIndicator();
-    if(page==='nasc-list-page')loadNascimentosWorker();
+    const pageEl = document.getElementById('wk-page-'+page);
+    if(pageEl) pageEl.classList.add('active');
+    if(btn) btn.classList.add('active');
+    if(page==='home') updatePendingIndicator();
+    if(page==='nasc-list-page') loadNascimentosWorker();
     if(page==='conferencia-page'){
       confAtiva=null;
       document.getElementById('conf-setup').classList.remove('hidden');
@@ -637,6 +638,23 @@ const App = (() => {
     }catch(e){}
   }
 
+  window.limparConferencias = ()=>{
+    Confirm.mostrar({
+      icone:'🗑️',
+      titulo:'Limpar histórico de conferências',
+      corpo:'Deseja apagar <strong>todas</strong> as conferências finalizadas?<br><br><span style="color:#dc2626">✗ Esta ação não pode ser desfeita.</span>',
+      labelConfirmar:'Limpar tudo',
+      tipo:'danger',
+      callback: async()=>{
+        try{
+          await api('DELETE','/api/conferencias/todas');
+          loadConferencias();
+          toast('Histórico de conferências limpo.');
+        }catch(e){toast('Erro: '+e.message);}
+      }
+    });
+  };
+
   window.deletarConferencia = async(id)=>{
     Confirm.mostrar({
       icone:'📋',
@@ -665,6 +683,66 @@ const App = (() => {
       document.getElementById('conf-chamada').classList.remove('hidden');
       document.getElementById('conf-log').innerHTML = '';
       toast(`Conferência iniciada — Lote: ${lote}`);
+      // Carregar lista do rebanho
+      await carregarListaConferencia();
+    }catch(e){toast('Erro: '+e.message);}
+  };
+
+  async function carregarListaConferencia(){
+    try{
+      const animais = await api('GET','/api/animais').catch(()=>[]);
+      const el = document.getElementById('conf-rebanho-lista');
+      if(!el) return;
+      if(!animais.length){
+        el.innerHTML='<div class="empty" style="padding:1rem"><div class="empty-text">Nenhum animal cadastrado ainda.</div></div>';
+        return;
+      }
+      el.innerHTML = animais.map(a=>`
+        <div id="conf-item-${a.brinco}" onclick="registrarPelaLista('${a.brinco}','${(a.nome||'').replace(/'/g,"\\'")}',this)"
+          style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-bottom:1px solid #f0ede8;cursor:pointer;transition:background .15s;border-radius:8px;margin-bottom:2px">
+          <div id="conf-status-${a.brinco}" style="width:32px;height:32px;border-radius:50%;background:#f5f4f0;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;transition:all .2s">○</div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600">${a.brinco}${a.nome?' — '+a.nome:''}</div>
+            <div style="font-size:11px;color:#888">${a.categoria} · ${a.raca}</div>
+          </div>
+          <div id="conf-badge-${a.brinco}" style="font-size:11px;color:#888">Pendente</div>
+        </div>`).join('');
+    }catch(e){}
+  }
+
+  window.registrarPelaLista = async(brinco, nome, el)=>{
+    if(!confAtiva){toast('Inicie uma conferência primeiro.');return;}
+    // Alternar entre presente e ausente
+    const statusEl = document.getElementById(`conf-status-${brinco}`);
+    const badgeEl = document.getElementById(`conf-badge-${brinco}`);
+    const jaPresente = statusEl && statusEl.textContent === '✓';
+    const status = jaPresente ? 'ausente' : 'presente';
+    try{
+      const data = await api('POST',`/api/conferencias/${confAtiva}/registrar`,{brinco, status});
+      document.getElementById('conf-presentes').textContent = data.presentes;
+      document.getElementById('conf-ausentes').textContent = data.ausentes;
+      // Atualizar visual na lista
+      if(statusEl){
+        statusEl.textContent = status==='presente'?'✓':'✗';
+        statusEl.style.background = status==='presente'?'#d1fae5':'#fee2e2';
+        statusEl.style.color = status==='presente'?'#065f46':'#991b1b';
+      }
+      if(badgeEl){
+        badgeEl.textContent = status==='presente'?'Presente':'Ausente';
+        badgeEl.style.color = status==='presente'?'#065f46':'#991b1b';
+        badgeEl.style.fontWeight = '600';
+      }
+      if(el) el.style.background = status==='presente'?'#f0fdf9':'#fef2f2';
+      // Log
+      const log = document.getElementById('conf-log');
+      const item = document.createElement('div');
+      item.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0ede8';
+      item.innerHTML=`<div style="width:28px;height:28px;border-radius:50%;background:${status==='presente'?'#d1fae5':'#fee2e2'};display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">${status==='presente'?'✓':'✗'}</div><div><div style="font-size:13px;font-weight:600">${brinco}${nome?' — '+nome:''}</div><div style="font-size:11px;color:#888">${status==='presente'?'Presente':'Ausente'} · ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div></div>`;
+      log.insertBefore(item, log.firstChild);
+      if(log.querySelector('.empty')) log.querySelector('.empty').remove();
+      confAnimaisRegistrados.push({brinco, status});
+      // Preencher campo de busca
+      document.getElementById('conf-brinco-input').value = '';
     }catch(e){toast('Erro: '+e.message);}
   };
 

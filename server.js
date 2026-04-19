@@ -413,6 +413,17 @@ app.patch('/api/conferencias/:id/finalizar', authAny, (req,res) => {
   res.json({ok:true});
 });
 
+app.delete('/api/conferencias/todas', authOwner, (req,res) => {
+  db.transaction(() => {
+    const ids = db.prepare("SELECT id FROM conferencias WHERE status='finalizada'").all().map(r=>r.id);
+    ids.forEach(id => {
+      db.prepare('DELETE FROM conferencia_animais WHERE conferencia_id=?').run(id);
+      db.prepare('DELETE FROM conferencias WHERE id=?').run(id);
+    });
+  })();
+  res.json({ok:true});
+});
+
 app.delete('/api/conferencias/:id', authOwner, (req,res) => {
   db.prepare('DELETE FROM conferencia_animais WHERE conferencia_id=?').run(req.params.id);
   db.prepare('DELETE FROM conferencias WHERE id=?').run(req.params.id);
