@@ -46,6 +46,16 @@ const App = (() => {
     return data;
   }
 
+  // Sexo automático por categoria
+  const sexoPorCategoria = {
+    'Vaca':'Femea','Novilha':'Femea','Bezerra':'Femea',
+    'Touro':'Macho','Boi':'Macho','Bezerro':'Macho'
+  };
+  window.autoSexoCategoria = (cat)=>{
+    const sexo = sexoPorCategoria[cat];
+    if(sexo) document.getElementById('w-r-sexo').value = sexo;
+  };
+
   // ── TOAST ──
   function toast(msg,dur=2800){
     const el=document.getElementById('toast');
@@ -644,7 +654,18 @@ const App = (() => {
     ['w-p-data','w-s-data','w-n-data','w-rep-data','fin-data'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=t;});
   }
 
-  window.openSheet=id=>document.getElementById(id).classList.add('show');
+  window.openSheet=id=>{
+    document.getElementById(id).classList.add('show');
+    // Preencher última raça ao abrir cadastro de animal
+    if(id==='sheet-animal'){
+      try{
+        const ultimaRaca = localStorage.getItem('ultima_raca');
+        if(ultimaRaca) document.getElementById('w-r-raca').value = ultimaRaca;
+        // Acionar sexo automático com categoria atual
+        autoSexoCategoria(document.getElementById('w-r-cat').value);
+      }catch(e){}
+    }
+  };
   window.closeSheet=id=>document.getElementById(id).classList.remove('show');
 
   // ── WORKER SUBMITS ──
@@ -663,10 +684,12 @@ const App = (() => {
   window.wSaveAnimal=async()=>{
     const brinco=document.getElementById('w-r-id').value.trim();
     if(!brinco){toast('Informe o brinco do animal.');return;}
+    const raca = document.getElementById('w-r-raca').value.trim()||'Nelore';
+    // Salvar última raça usada
+    try{ localStorage.setItem('ultima_raca', raca); }catch(e){}
     await wSave('animais',{
       brinco, nome:document.getElementById('w-r-nome').value.trim(),
-      raca:document.getElementById('w-r-raca').value.trim()||'Nelore',
-      categoria:document.getElementById('w-r-cat').value,
+      raca, categoria:document.getElementById('w-r-cat').value,
       sexo:document.getElementById('w-r-sexo').value,
       nascimento:document.getElementById('w-r-nasc').value||null,
       peso:parseFloat(document.getElementById('w-r-peso').value)||null,
@@ -674,7 +697,11 @@ const App = (() => {
       pai_brinco:document.getElementById('w-r-pai').value.trim(),
       origem:document.getElementById('w-r-origem').value,
       observacoes:document.getElementById('w-r-obs').value.trim()
-    },'','sheet-animal','Animal salvo!',['w-r-id','w-r-nome','w-r-raca','w-r-nasc','w-r-peso','w-r-mae','w-r-pai','w-r-obs']);
+    },'','sheet-animal','Animal salvo!',['w-r-id','w-r-nome','w-r-nasc','w-r-peso','w-r-mae','w-r-pai','w-r-obs']);
+    // Preencher raça novamente após limpar
+    setTimeout(()=>{
+      try{ document.getElementById('w-r-raca').value = localStorage.getItem('ultima_raca')||'Nelore'; }catch(e){}
+    }, 100);
   };
 
   window.wSavePesagem=async()=>{
