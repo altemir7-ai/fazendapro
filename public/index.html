@@ -282,6 +282,13 @@
         <div>⏳</div>
         <div><div class="pending-count" id="pending-num">0</div><div id="pending-msg">registros aguardando envio</div></div>
       </div>
+      <div class="section-title">Navegar</div>
+      <div class="quick-grid">
+        <div class="quick-btn" onclick="workerNav('rebanho-page',null)"><div class="quick-btn-icon">🐄</div><div class="quick-btn-label">Rebanho</div><div class="quick-btn-sub">Ver todos os animais</div></div>
+        <div class="quick-btn" onclick="workerNav('conferencia-page',null)"><div class="quick-btn-icon">📋</div><div class="quick-btn-label">Conferência</div><div class="quick-btn-sub">Chamada do gado</div></div>
+        <div class="quick-btn" onclick="workerNav('nasc-list-page',null)"><div class="quick-btn-icon">📊</div><div class="quick-btn-label">Nascimentos</div><div class="quick-btn-sub">Ver histórico</div></div>
+        <div class="quick-btn" onclick="workerNav('mort-page',null)"><div class="quick-btn-icon">💀</div><div class="quick-btn-label">Óbito</div><div class="quick-btn-sub">Registrar morte</div></div>
+      </div>
       <div class="section-title">Registrar</div>
       <div class="quick-grid">
         <div class="quick-btn" onclick="openSheet('sheet-animal')"><div class="quick-btn-icon">🐄</div><div class="quick-btn-label">Animal</div><div class="quick-btn-sub">Novo brinco</div></div>
@@ -289,10 +296,7 @@
         <div class="quick-btn" onclick="openSheet('sheet-pesagem')"><div class="quick-btn-icon">⚖️</div><div class="quick-btn-label">Pesagem</div><div class="quick-btn-sub">Registrar peso</div></div>
         <div class="quick-btn" onclick="openSheet('sheet-saude')"><div class="quick-btn-icon">💉</div><div class="quick-btn-label">Saúde</div><div class="quick-btn-sub">Vacina / tratamento</div></div>
         <div class="quick-btn" onclick="openSheet('sheet-repro')"><div class="quick-btn-icon">🔄</div><div class="quick-btn-label">Reprodução</div><div class="quick-btn-sub">Cobertura / gestação</div></div>
-        <div class="quick-btn" onclick="abrirLote()"><div class="quick-btn-icon">💉</div><div class="quick-btn-label">Vacinação em lote</div><div class="quick-btn-sub">Vários animais</div></div>
-        <div class="quick-btn" onclick="workerNav('conferencia-page',null)"><div class="quick-btn-icon">📋</div><div class="quick-btn-label">Conferência</div><div class="quick-btn-sub">Chamada do gado</div></div>
-        <div class="quick-btn" onclick="workerNav('mort-page',null)"><div class="quick-btn-icon">💀</div><div class="quick-btn-label">Óbito</div><div class="quick-btn-sub">Registrar morte</div></div>
-        <div class="quick-btn" onclick="workerNav('nasc-list-page',null)"><div class="quick-btn-icon">📊</div><div class="quick-btn-label">Nascimentos</div><div class="quick-btn-sub">Ver histórico</div></div>
+        <div class="quick-btn" onclick="abrirLote()"><div class="quick-btn-icon">💊</div><div class="quick-btn-label">Vacinação em lote</div><div class="quick-btn-sub">Vários animais</div></div>
       </div>
       <div class="section-title">Como funciona offline</div>
       <div class="card">
@@ -304,6 +308,7 @@
 
     <!-- CONFERÊNCIA -->
     <div id="wk-page-conferencia-page" class="page wk-page">
+      <button class="btn btn-sm" style="margin-bottom:.75rem" onclick="workerNav('home',null)">← Voltar</button>
       <!-- Setup -->
       <div id="conf-setup">
         <div class="section-title">Nova conferência</div>
@@ -361,6 +366,7 @@
 
     <!-- MORTALIDADE WORKER -->
     <div id="wk-page-mort-page" class="page wk-page">
+      <button class="btn btn-sm" style="margin-bottom:.75rem" onclick="workerNav('home',null)">← Voltar</button>
       <div class="section-title">Registrar óbito</div>
       <div class="card" style="text-align:center;padding:1.5rem;cursor:pointer" onclick="openSheet('sheet-mortalidade')">
         <div style="font-size:40px;margin-bottom:8px">💀</div>
@@ -371,12 +377,14 @@
         ⚠️ Ao registrar o óbito, o animal é automaticamente removido do rebanho ativo.
       </div>
     </div>
+      <button class="btn btn-sm" style="margin-bottom:.75rem" onclick="workerNav('home',null)">← Voltar</button>
       <div class="section-title">Nascimentos registrados</div>
       <div class="card"><div id="w-nasc-list"><div class="empty"><div class="empty-icon">🐄</div><div class="empty-text">Carregando...</div></div></div></div>
     </div>
 
     <!-- REBANHO WORKER -->
     <div id="wk-page-rebanho-page" class="page wk-page">
+      <button class="btn btn-sm" style="margin-bottom:.75rem" onclick="workerNav('home',null)">← Voltar</button>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
         <div class="section-title" style="margin:0">Rebanho da fazenda</div>
         <span id="wk-rebanho-count" style="font-size:12px;color:#888;font-weight:600"></span>
@@ -396,29 +404,7 @@
 
   </div>
 
-  <!-- NAV WORKER -->
-  <div class="nav-bottom">
-    <button class="nav-item wk-nav-item active" id="wk-nav-home" onclick="workerNav('home',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-      <span>Início</span>
-    </button>
-    <button class="nav-item wk-nav-item" id="wk-nav-rebanho" onclick="workerNav('rebanho-page',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-      <span>Rebanho</span>
-    </button>
-    <button class="nav-item wk-nav-item" id="wk-nav-conf" onclick="workerNav('conferencia-page',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-      <span>Chamada</span>
-    </button>
-    <button class="nav-item wk-nav-item" id="wk-nav-nasc" onclick="workerNav('nasc-list-page',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      <span>Nascimentos</span>
-    </button>
-    <button class="nav-item wk-nav-item" id="wk-nav-obito" onclick="workerNav('mort-page',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-      <span>Óbito</span>
-    </button>
-  </div>
+  <!-- NAV WORKER removida — navegação feita pelos botões da página -->
 </div>
 
 <!-- ═══ SHEETS VAQUEIRO ═══ -->
