@@ -221,8 +221,27 @@ const App = (() => {
     try{
       animaisCache=await api('GET','/api/animais');
       document.getElementById('rebanho-count').textContent=animaisCache.length+' animal(is)';
+      atualizarContsFiltros();
       renderRebanho();
     }catch(e){}
+  }
+
+  function atualizarContsFiltros(){
+    const cats = ['Vaca','Touro','Boi','Novilha','Bezerro','Bezerra'];
+    const total = animaisCache.length;
+    // Atualizar botão Todos
+    document.querySelectorAll('.filter-btn-rebanho').forEach(btn => {
+      const txt = btn.textContent.replace(/\s*\(\d+\)/,'').trim();
+      if(txt==='Todos') { btn.textContent=`Todos (${total})`; return; }
+      const cat = cats.find(c=>c===txt||c+'s'===txt||c+'as'===txt||
+        (txt==='Vacas'&&c==='Vaca')||(txt==='Touros'&&c==='Touro')||
+        (txt==='Bois'&&c==='Boi')||(txt==='Novilhas'&&c==='Novilha')||
+        (txt==='Bezerros'&&c==='Bezerro')||(txt==='Bezerras'&&c==='Bezerra'));
+      if(cat){
+        const n = animaisCache.filter(a=>a.categoria===cat).length;
+        btn.textContent=`${txt} (${n})`;
+      }
+    });
   }
 
   function renderRebanho(){
@@ -537,12 +556,72 @@ const App = (() => {
     if(btn) btn.classList.add('active');
     if(page==='home') updatePendingIndicator();
     if(page==='nasc-list-page') loadNascimentosWorker();
+    if(page==='rebanho-page') loadRebanhoWorker();
     if(page==='conferencia-page'){
       confAtiva=null;
       document.getElementById('conf-setup').classList.remove('hidden');
       document.getElementById('conf-chamada').classList.add('hidden');
     }
   };
+
+  // ── REBANHO DO VAQUEIRO ──────────────────────────
+  let wkAnimaisCache=[], wkFiltro='todos', wkBusca='';
+
+  async function loadRebanhoWorker(){
+    const el = document.getElementById('wk-rebanho-list');
+    if(!el) return;
+    el.innerHTML='<div class="empty"><div class="empty-icon">🐄</div><div class="empty-text">Carregando...</div></div>';
+    try{
+      wkAnimaisCache = await api('GET','/api/animais/lista');
+      document.getElementById('wk-rebanho-count').textContent = wkAnimaisCache.length+' animal(is)';
+      atualizarContsFiltrosWorker();
+      renderRebanhoWorker();
+    }catch(e){
+      el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Erro ao carregar rebanho.</div></div>';
+    }
+  }
+
+  function atualizarContsFiltrosWorker(){
+    const total = wkAnimaisCache.length;
+    document.querySelectorAll('.wk-rb-filter').forEach(btn=>{
+      const txt = btn.textContent.replace(/\s*\(\d+\)/,'').trim();
+      if(txt==='Todos'){btn.textContent=`Todos (${total})`;return;}
+      const mapa = {'Vacas':'Vaca','Touros':'Touro','Bois':'Boi','Novilhas':'Novilha','Bezerros':'Bezerro','Bezerras':'Bezerra'};
+      const cat = mapa[txt];
+      if(cat){
+        const n = wkAnimaisCache.filter(a=>a.categoria===cat).length;
+        btn.textContent=`${txt} (${n})`;
+      }
+    });
+  }
+
+  function renderRebanhoWorker(){
+    const el = document.getElementById('wk-rebanho-list');
+    if(!el) return;
+    const busca = wkBusca.toLowerCase();
+    const lista = wkAnimaisCache.filter(a=>{
+      const mb=!busca||(a.brinco+(a.nome||'')).toLowerCase().includes(busca);
+      const mf=wkFiltro==='todos'||a.categoria===wkFiltro;
+      return mb&&mf;
+    });
+    el.innerHTML = lista.length ? lista.map(a=>`
+      <div class="list-item">
+        <div class="list-icon" style="background:#f0fdf9;font-size:20px">${a.categoria==='Touro'||a.categoria==='Boi'?'🐂':'🐄'}</div>
+        <div class="list-body">
+          <div class="list-title">${a.brinco}${a.nome?' — '+a.nome:''}</div>
+          <div class="list-sub"><span class="badge ${catBadge[a.categoria]||'b-gray'}">${a.categoria}</span>${a.raca?' · '+a.raca:''}</div>
+        </div>
+      </div>`).join('') :
+      '<div class="empty"><div class="empty-icon">🐄</div><div class="empty-text">Nenhum animal encontrado.</div></div>';
+  }
+
+  window.filtrarRebanhoWorker=(f,btn)=>{
+    wkFiltro=f;
+    document.querySelectorAll('.wk-rb-filter').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderRebanhoWorker();
+  };
+  window.buscarRebanhoWorker=v=>{wkBusca=v;renderRebanhoWorker();};
 
   async function loadNascimentosWorker(){
     try{

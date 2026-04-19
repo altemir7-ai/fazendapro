@@ -71,7 +71,10 @@
       <div class="metric-card" style="margin-bottom:1rem"><div class="metric-lbl">Saldo financeiro</div><div class="metric-val" id="dash-saldo">—</div></div>
       <div class="section-title">Alertas</div>
       <div id="dash-alerts"></div>
-      <div class="section-title">Últimas atividades</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:1.25rem 0 .625rem">
+        <div class="section-title" style="margin:0">Últimas atividades</div>
+        <button class="btn btn-sm btn-danger" onclick="limparFeed()">Limpar</button>
+      </div>
       <div class="card"><div id="dash-feed"></div></div>
     </div>
 
@@ -372,6 +375,25 @@
       <div class="card"><div id="w-nasc-list"><div class="empty"><div class="empty-icon">🐄</div><div class="empty-text">Carregando...</div></div></div></div>
     </div>
 
+    <!-- REBANHO WORKER -->
+    <div id="wk-page-rebanho-page" class="page wk-page">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+        <div class="section-title" style="margin:0">Rebanho da fazenda</div>
+        <span id="wk-rebanho-count" style="font-size:12px;color:#888;font-weight:600"></span>
+      </div>
+      <input type="search" class="search-input" placeholder="Buscar por brinco ou nome..." oninput="buscarRebanhoWorker(this.value)"/>
+      <div class="filter-row">
+        <button class="filter-btn wk-rb-filter active" onclick="filtrarRebanhoWorker('todos',this)">Todos</button>
+        <button class="filter-btn wk-rb-filter" onclick="filtrarRebanhoWorker('Vaca',this)">Vacas</button>
+        <button class="filter-btn wk-rb-filter" onclick="filtrarRebanhoWorker('Touro',this)">Touros</button>
+        <button class="filter-btn wk-rb-filter" onclick="filtrarRebanhoWorker('Boi',this)">Bois</button>
+        <button class="filter-btn wk-rb-filter" onclick="filtrarRebanhoWorker('Novilha',this)">Novilhas</button>
+        <button class="filter-btn wk-rb-filter" onclick="filtrarRebanhoWorker('Bezerro',this)">Bezerros</button>
+        <button class="filter-btn wk-rb-filter" onclick="filtrarRebanhoWorker('Bezerra',this)">Bezerras</button>
+      </div>
+      <div class="card"><div id="wk-rebanho-list"><div class="empty"><div class="empty-icon">🐄</div><div class="empty-text">Carregando...</div></div></div></div>
+    </div>
+
   </div>
 
   <!-- NAV WORKER -->
@@ -379,6 +401,10 @@
     <button class="nav-item wk-nav-item active" id="wk-nav-home" onclick="workerNav('home',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
       <span>Início</span>
+    </button>
+    <button class="nav-item wk-nav-item" id="wk-nav-rebanho" onclick="workerNav('rebanho-page',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+      <span>Rebanho</span>
     </button>
     <button class="nav-item wk-nav-item" id="wk-nav-conf" onclick="workerNav('conferencia-page',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
