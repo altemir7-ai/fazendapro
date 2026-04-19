@@ -193,7 +193,12 @@ app.post('/api/sync', authAny, (req,res) => {
 
 // ── ANIMAIS ───────────────────────────────────────
 app.get('/api/animais', authOwner, (req,res) => {
-  res.json(db.prepare(`SELECT a.*,v.nome as vaqueiro_nome FROM animais a LEFT JOIN vaqueiros v ON a.registrado_por=v.id WHERE a.ativo=1 ORDER BY a.id DESC`).all());
+  res.json(db.prepare(`SELECT a.*,v.nome as vaqueiro_nome FROM animais a LEFT JOIN vaqueiros v ON a.registrado_por=v.id WHERE a.ativo=1 ORDER BY a.brinco`).all());
+});
+
+// Rota para o vaqueiro listar animais (somente campos necessários para conferência)
+app.get('/api/animais/lista', authAny, (req,res) => {
+  res.json(db.prepare(`SELECT id,brinco,nome,categoria,raca FROM animais WHERE ativo=1 ORDER BY brinco`).all());
 });
 
 app.delete('/api/animais/:id', authOwner, (req,res) => {

@@ -690,24 +690,27 @@ const App = (() => {
 
   async function carregarListaConferencia(){
     try{
-      const animais = await api('GET','/api/animais').catch(()=>[]);
+      const animais = await api('GET','/api/animais/lista').catch(()=>[]);
       const el = document.getElementById('conf-rebanho-lista');
       if(!el) return;
       if(!animais.length){
-        el.innerHTML='<div class="empty" style="padding:1rem"><div class="empty-text">Nenhum animal cadastrado ainda.</div></div>';
+        el.innerHTML='<div class="empty" style="padding:1rem"><div class="empty-icon">🐄</div><div class="empty-text">Nenhum animal cadastrado ainda.<br>Cadastre animais primeiro.</div></div>';
         return;
       }
       el.innerHTML = animais.map(a=>`
         <div id="conf-item-${a.brinco}" onclick="registrarPelaLista('${a.brinco}','${(a.nome||'').replace(/'/g,"\\'")}',this)"
-          style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-bottom:1px solid #f0ede8;cursor:pointer;transition:background .15s;border-radius:8px;margin-bottom:2px">
-          <div id="conf-status-${a.brinco}" style="width:32px;height:32px;border-radius:50%;background:#f5f4f0;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;transition:all .2s">○</div>
+          style="display:flex;align-items:center;gap:12px;padding:12px 8px;border-bottom:1px solid #f0ede8;cursor:pointer;transition:all .15s;border-radius:8px">
+          <div id="conf-status-${a.brinco}" style="width:36px;height:36px;border-radius:50%;background:#f5f4f0;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;transition:all .2s;border:2px solid #e8e6e0">○</div>
           <div style="flex:1">
-            <div style="font-size:14px;font-weight:600">${a.brinco}${a.nome?' — '+a.nome:''}</div>
-            <div style="font-size:11px;color:#888">${a.categoria} · ${a.raca}</div>
+            <div style="font-size:15px;font-weight:700">${a.brinco}${a.nome?' — '+a.nome:''}</div>
+            <div style="font-size:12px;color:#888">${a.categoria}${a.raca?' · '+a.raca:''}</div>
           </div>
-          <div id="conf-badge-${a.brinco}" style="font-size:11px;color:#888">Pendente</div>
+          <div id="conf-badge-${a.brinco}" style="font-size:12px;color:#aaa;font-weight:500">Pendente</div>
         </div>`).join('');
-    }catch(e){}
+    }catch(e){
+      const el = document.getElementById('conf-rebanho-lista');
+      if(el) el.innerHTML='<div class="empty" style="padding:1rem"><div class="empty-text">Erro ao carregar lista.</div></div>';
+    }
   }
 
   window.registrarPelaLista = async(brinco, nome, el)=>{
