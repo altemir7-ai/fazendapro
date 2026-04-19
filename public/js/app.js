@@ -6,6 +6,37 @@ const App = (() => {
   const diasAte = d => Math.round((new Date(d)-new Date())/86400000);
   const catBadge = {Vaca:'b-teal',Touro:'b-blue',Novilha:'b-amber',Bezerro:'b-green',Bezerra:'b-pink',Boi:'b-gray'};
 
+  // ── SISTEMA DE CONFIRMAÇÃO CENTRALIZADO ──────────
+  const Confirm = (() => {
+    let _callback = null;
+
+    function mostrar({icone='⚠️', titulo, corpo, labelConfirmar='Confirmar', tipo='danger', callback}){
+      document.getElementById('cm-icon').textContent = icone;
+      document.getElementById('cm-title').textContent = titulo;
+      document.getElementById('cm-body').innerHTML = corpo;
+      const btn = document.getElementById('cm-btn');
+      btn.textContent = labelConfirmar;
+      btn.className = `confirm-modal-confirm ${tipo}`;
+      _callback = callback;
+      document.getElementById('confirm-modal-bg').classList.add('show');
+    }
+
+    function cancelar(){
+      _callback = null;
+      document.getElementById('confirm-modal-bg').classList.remove('show');
+    }
+
+    async function executar(){
+      document.getElementById('confirm-modal-bg').classList.remove('show');
+      if(_callback) await _callback();
+      _callback = null;
+    }
+
+    return { mostrar, cancelar, executar };
+  })();
+
+  window.Confirm = Confirm;
+
   async function api(method,path,body){
     const opts={method,headers:{'Content-Type':'application/json'}};
     if(body)opts.body=JSON.stringify(body);
@@ -200,13 +231,22 @@ const App = (() => {
           ${a.mae_brinco?`<div class="list-sub">Mãe: ${a.mae_brinco}${a.pai_brinco?' · Pai: '+a.pai_brinco:''}</div>`:''}
           <div class="list-sub">Por: ${a.vaqueiro_nome||'Proprietário'} · ${fmtData(a.criado_em)}</div>
         </div>
-        <button class="btn btn-sm btn-danger" onclick="deleteAnimal(${a.id})">×</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteAnimal(${a.id},'${a.brinco}','${(a.nome||'').replace(/'/g,"\\'")}')">×</button>
       </div>`).join(''):'<div class="empty"><div class="empty-icon">🐄</div><div class="empty-text">Nenhum animal encontrado.</div></div>';
   }
 
   window.filtrarRebanho=(f,btn)=>{filtroRebanho=f;document.querySelectorAll('.filter-btn-rebanho').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderRebanho();};
   window.buscarRebanho=(v)=>{buscaRebanho=v;renderRebanho();};
-  window.deleteAnimal=async(id)=>{if(!confirm('Remover este animal?'))return;await api('DELETE',`/api/animais/${id}`);loadRebanho();toast('Animal removido.');};
+  window.deleteAnimal=async(id,brinco,nome)=>{
+    Confirm.mostrar({
+      icone:'🐄',
+      titulo:'Remover animal',
+      corpo:`Deseja remover o animal <strong>${brinco}${nome?' — '+nome:''}</strong> do rebanho ativo?<br><br>O registro será mantido no histórico.`,
+      labelConfirmar:'Remover',
+      tipo:'danger',
+      callback: async()=>{ await api('DELETE',`/api/animais/${id}`); loadRebanho(); toast('Animal removido.'); }
+    });
+  };
 
   // ── SAÚDE ──
   async function loadSaude(){
@@ -251,11 +291,24 @@ const App = (() => {
   window.addFin=async()=>{
     const valor=parseFloat(document.getElementById('fin-valor').value);
     if(!valor||valor<=0){toast('Informe um valor válido.');return;}
-    try{
-      await api('POST','/api/financeiro',{tipo:document.getElementById('fin-tipo').value,categoria:document.getElementById('fin-cat').value,valor,data:document.getElementById('fin-data').value||hoje(),observacao:document.getElementById('fin-obs').value.trim()});
-      ['fin-valor','fin-obs'].forEach(x=>document.getElementById(x).value='');
-      closeSheet('sheet-fin'); loadFinanceiro(); toast('Lançamento registrado!');
-    }catch(e){toast(e.message);}
+    const tipo=document.getElementById('fin-tipo').value;
+    const cat=document.getElementById('fin-cat').value;
+    const data=document.getElementById('fin-data').value||hoje();
+    const obs=document.getElementById('fin-obs').value.trim();
+    Confirm.mostrar({
+      icone:tipo==='entrada'?'📈':'📉',
+      titulo:'Confirmar lançamento',
+      corpo:`Confirma o registro de <strong>${tipo==='entrada'?'entrada':'saída'}</strong>?<br><br>Categoria: <strong>${cat}</strong><br>Valor: <strong>R$ ${fmtBR(valor)}</strong>`,
+      labelConfirmar:'Lançar',
+      tipo:'primary',
+      callback:async()=>{
+        try{
+          await api('POST','/api/financeiro',{tipo,categoria:cat,valor,data,observacao:obs});
+          ['fin-valor','fin-obs'].forEach(x=>document.getElementById(x).value='');
+          closeSheet('sheet-fin'); loadFinanceiro(); toast('Lançamento registrado!');
+        }catch(e){toast(e.message);}
+      }
+    });
   };
 
   // ── NASCIMENTOS ──
@@ -328,32 +381,47 @@ const App = (() => {
 
   let pendingAction=null;
   window.confirmarDesativar=(id,nome,codigo)=>{
-    pendingAction={tipo:'desativar',id,nome,codigo};
-    document.getElementById('ov-confirm-titulo').textContent='Desativar vaqueiro';
-    document.getElementById('ov-confirm-body').innerHTML=`Desativar acesso de <strong>${nome}</strong> (${codigo})?<br><br><span style="color:#059669">✓ Histórico mantido · ✓ Pode reativar depois</span><br><span style="color:#dc2626">✗ Não conseguirá entrar no app</span>`;
-    document.getElementById('ov-confirm-btn').textContent='Desativar';
-    document.getElementById('ov-confirm').classList.add('show');
+    Confirm.mostrar({
+      icone:'👤',
+      titulo:'Desativar vaqueiro',
+      corpo:`Deseja desativar o acesso de <strong>${nome}</strong> (${codigo})?<br><br><span style="color:#059669">✓ Histórico mantido</span><br><span style="color:#059669">✓ Pode ser reativado depois</span><br><span style="color:#dc2626">✗ Não conseguirá entrar no app</span>`,
+      labelConfirmar:'Desativar',
+      tipo:'danger',
+      callback: async()=>{ await api('PATCH',`/api/vaqueiros/${id}/desativar`); toast(`${nome} desativado.`); await loadVaqueiros(); }
+    });
   };
+
   window.confirmarApagar=(id,nome,codigo,regs)=>{
-    pendingAction={tipo:'apagar',id,nome,codigo};
-    document.getElementById('ov-confirm-titulo').textContent='Apagar permanentemente';
-    document.getElementById('ov-confirm-body').innerHTML=`Apagar <strong>${nome}</strong> (${codigo}) permanentemente?<br><br><span style="color:#059669">✓ ${regs} registro(s) são mantidos</span><br><span style="color:#dc2626">✗ Esta ação não pode ser desfeita</span>`;
-    document.getElementById('ov-confirm-btn').textContent='Apagar';
-    document.getElementById('ov-confirm').classList.add('show');
+    Confirm.mostrar({
+      icone:'🗑️',
+      titulo:'Apagar permanentemente',
+      corpo:`Apagar <strong>${nome}</strong> (${codigo}) permanentemente?<br><br><span style="color:#059669">✓ ${regs} registro(s) são mantidos</span><br><span style="color:#dc2626">✗ Esta ação não pode ser desfeita</span>`,
+      labelConfirmar:'Apagar',
+      tipo:'danger',
+      callback: async()=>{ await api('DELETE',`/api/vaqueiros/${id}`); toast(`${nome} removido.`); await loadVaqueiros(); }
+    });
   };
   window.executarConfirm=async()=>{
     if(!pendingAction)return;
-    const{tipo,id,nome,codigo}=pendingAction; pendingAction=null;
+    const{tipo,id,nome}=pendingAction; pendingAction=null;
     document.getElementById('ov-confirm').classList.remove('show');
     try{
-      if(tipo==='desativar'){await api('PATCH',`/api/vaqueiros/${id}/desativar`);toast(`${nome} desativado.`);}
-      else if(tipo==='apagar'){await api('DELETE',`/api/vaqueiros/${id}`);toast(`${nome} removido.`);}
-      else if(tipo==='senha'){const s=document.getElementById('nv-senha').value;await api('PATCH',`/api/vaqueiros/${id}/senha`,{senha:s});document.getElementById('ov-senha').classList.remove('show');toast(`Senha de ${nome} atualizada!`);}
+      if(tipo==='senha'){const s=document.getElementById('nv-senha').value;await api('PATCH',`/api/vaqueiros/${id}/senha`,{senha:s});document.getElementById('ov-senha').classList.remove('show');toast(`Senha de ${nome} atualizada!`);}
       await loadVaqueiros();
     }catch(e){toast('Erro: '+e.message);}
   };
   window.cancelarConfirm=()=>{ pendingAction=null; document.getElementById('ov-confirm').classList.remove('show'); };
-  window.reativar=async id=>{ const w=vaqueirosCache.find(x=>x.id===id); try{await api('PATCH',`/api/vaqueiros/${id}/reativar`);toast(`${w?.nome||'Vaqueiro'} reativado!`);await loadVaqueiros();}catch(e){toast(e.message);} };
+  window.reativar=async id=>{
+    const w=vaqueirosCache.find(x=>x.id===id);
+    Confirm.mostrar({
+      icone:'✅',
+      titulo:'Reativar vaqueiro',
+      corpo:`Deseja reativar o acesso de <strong>${w?.nome||'este vaqueiro'}</strong>?<br><br>Ele poderá entrar no app novamente.`,
+      labelConfirmar:'Reativar',
+      tipo:'primary',
+      callback: async()=>{ await api('PATCH',`/api/vaqueiros/${id}/reativar`); toast(`${w?.nome||'Vaqueiro'} reativado!`); await loadVaqueiros(); }
+    });
+  };
   window.editarVaqueiro=(id,nome,tel)=>{
     pendingAction=null;
     document.getElementById('ev-id').value=id;
@@ -550,10 +618,14 @@ const App = (() => {
   }
 
   window.deletarConferencia = async(id)=>{
-    if(!confirm('Excluir esta conferência?'))return;
-    await api('DELETE',`/api/conferencias/${id}`);
-    loadConferencias();
-    toast('Conferência excluída.');
+    Confirm.mostrar({
+      icone:'📋',
+      titulo:'Excluir conferência',
+      corpo:'Deseja excluir esta conferência permanentemente?<br><br><span style="color:#dc2626">✗ Esta ação não pode ser desfeita.</span>',
+      labelConfirmar:'Excluir',
+      tipo:'danger',
+      callback: async()=>{ await api('DELETE',`/api/conferencias/${id}`); loadConferencias(); toast('Conferência excluída.'); }
+    });
   };
 
   // Worker — iniciar conferência
@@ -607,16 +679,22 @@ const App = (() => {
 
   window.finalizarConferencia = async()=>{
     if(!confAtiva)return;
-    if(!confirm('Finalizar a conferência? Ela não poderá ser editada depois.'))return;
-    try{
-      await api('PATCH',`/api/conferencias/${confAtiva}/finalizar`);
-      const pres = document.getElementById('conf-presentes').textContent;
-      const aus  = document.getElementById('conf-ausentes').textContent;
-      toast(`Conferência finalizada! ${pres} presentes, ${aus} ausentes.`);
-      confAtiva = null;
-      document.getElementById('conf-setup').classList.remove('hidden');
-      document.getElementById('conf-chamada').classList.add('hidden');
-    }catch(e){toast('Erro: '+e.message);}
+    const pres = document.getElementById('conf-presentes').textContent;
+    const aus  = document.getElementById('conf-ausentes').textContent;
+    Confirm.mostrar({
+      icone:'✅',
+      titulo:'Finalizar conferência',
+      corpo:`Confirma o encerramento da conferência?<br><br><strong>${pres} presente(s)</strong> · <strong>${aus} ausente(s)</strong><br><br>Após finalizar não será possível editar.`,
+      labelConfirmar:'Finalizar',
+      tipo:'primary',
+      callback: async()=>{
+        await api('PATCH',`/api/conferencias/${confAtiva}/finalizar`);
+        toast(`Conferência finalizada! ${pres} presentes, ${aus} ausentes.`);
+        confAtiva=null;
+        document.getElementById('conf-setup').classList.remove('hidden');
+        document.getElementById('conf-chamada').classList.add('hidden');
+      }
+    });
   };
 
   // Enter no campo de brinco
@@ -665,40 +743,54 @@ const App = (() => {
   }
 
   window.deletarObito = async(id)=>{
-    if(!confirm('Excluir este registro de óbito?'))return;
-    await api('DELETE',`/api/mortalidade/${id}`);
-    loadMortalidade();
-    toast('Registro excluído.');
+    Confirm.mostrar({
+      icone:'🗑️',
+      titulo:'Excluir registro de óbito',
+      corpo:'Deseja excluir este registro permanentemente?<br><br><span style="color:#dc2626">✗ Esta ação não pode ser desfeita.</span>',
+      labelConfirmar:'Excluir',
+      tipo:'danger',
+      callback: async()=>{ await api('DELETE',`/api/mortalidade/${id}`); loadMortalidade(); toast('Registro excluído.'); }
+    });
   };
 
   window.wSaveMortalidade = async()=>{
     const brinco = document.getElementById('w-m-brinco').value.trim();
     if(!brinco){toast('Informe o brinco do animal.');return;}
-    const data = {
-      animal_brinco: brinco,
-      animal_nome: document.getElementById('w-m-nome').value.trim(),
-      data_obito: document.getElementById('w-m-data').value || hoje(),
-      causa: document.getElementById('w-m-causa').value,
-      descricao: document.getElementById('w-m-desc').value.trim(),
-      localizacao: document.getElementById('w-m-local').value.trim(),
-      peso_estimado: parseFloat(document.getElementById('w-m-peso').value)||null
-    };
-    if(Sync.isOnline()){
-      try{
-        await api('POST','/api/mortalidade', data);
-        ['w-m-brinco','w-m-nome','w-m-data','w-m-desc','w-m-local','w-m-peso'].forEach(x=>document.getElementById(x).value='');
-        document.getElementById('w-m-data').value = hoje();
-        closeSheet('sheet-mortalidade');
-        toast('Óbito registrado com sucesso.');
-      }catch(e){toast('Erro: '+e.message);}
-    } else {
-      await LocalDB.add('mortalidade', data);
-      ['w-m-brinco','w-m-nome','w-m-desc','w-m-local','w-m-peso'].forEach(x=>document.getElementById(x).value='');
-      document.getElementById('w-m-data').value = hoje();
-      closeSheet('sheet-mortalidade');
-      toast('Óbito salvo — será enviado ao conectar.');
-      updatePendingIndicator();
-    }
+    const nome = document.getElementById('w-m-nome').value.trim();
+    const causa = document.getElementById('w-m-causa').value;
+    Confirm.mostrar({
+      icone:'💀',
+      titulo:'Registrar óbito',
+      corpo:`Confirma o óbito do animal <strong>${brinco}${nome?' — '+nome:''}</strong>?<br><br>Causa: <strong>${causa}</strong><br><br><span style="color:#dc2626">⚠️ O animal será removido do rebanho ativo automaticamente.</span>`,
+      labelConfirmar:'Confirmar óbito',
+      tipo:'danger',
+      callback: async()=>{
+        const data={
+          animal_brinco:brinco,animal_nome:nome,
+          data_obito:document.getElementById('w-m-data').value||hoje(),
+          causa,
+          descricao:document.getElementById('w-m-desc').value.trim(),
+          localizacao:document.getElementById('w-m-local').value.trim(),
+          peso_estimado:parseFloat(document.getElementById('w-m-peso').value)||null
+        };
+        if(Sync.isOnline()){
+          try{
+            await api('POST','/api/mortalidade',data);
+            ['w-m-brinco','w-m-nome','w-m-desc','w-m-local','w-m-peso'].forEach(x=>document.getElementById(x).value='');
+            document.getElementById('w-m-data').value=hoje();
+            closeSheet('sheet-mortalidade');
+            toast('Óbito registrado com sucesso.');
+          }catch(e){toast('Erro: '+e.message);}
+        } else {
+          await LocalDB.add('mortalidade',data);
+          ['w-m-brinco','w-m-nome','w-m-desc','w-m-local','w-m-peso'].forEach(x=>document.getElementById(x).value='');
+          document.getElementById('w-m-data').value=hoje();
+          closeSheet('sheet-mortalidade');
+          toast('Óbito salvo — será enviado ao conectar.');
+          updatePendingIndicator();
+        }
+      }
+    });
   };
 
   // ── BOOT ──

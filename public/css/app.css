@@ -193,3 +193,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;f
   .nav-item{max-width:80px}
   .page{padding-bottom:90px;max-width:680px;margin:0 auto}
 }
+
+/* ── MODAL DE CONFIRMAÇÃO ── */
+.confirm-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;display:none;align-items:center;justify-content:center;padding:1rem}
+.confirm-modal-bg.show{display:flex}
+.confirm-modal{background:#fff;border-radius:20px;padding:1.5rem;width:100%;max-width:340px;text-align:center}
+.confirm-modal-icon{font-size:44px;margin-bottom:.75rem}
+.confirm-modal-title{font-size:17px;font-weight:700;margin-bottom:8px;color:#1a1a1a}
+.confirm-modal-body{font-size:13px;color:#666;line-height:1.6;margin-bottom:1.25rem}
+.confirm-modal-actions{display:flex;gap:8px}
+.confirm-modal-actions .btn{flex:1;padding:12px}
+.confirm-modal-cancel{background:#f5f4f0;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;color:#666;padding:12px;flex:1;transition:all .15s}
+.confirm-modal-cancel:hover{background:#e8e6e0}
+.confirm-modal-confirm{border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;padding:12px;flex:1;transition:all .15s;color:#fff}
+.confirm-modal-confirm.danger{background:#dc2626}
+.confirm-modal-confirm.danger:hover{background:#b91c1c}
+.confirm-modal-confirm.warning{background:#f59e0b}
+.confirm-modal-confirm.warning:hover{background:#d97706}
+.confirm-modal-confirm.primary{background:#0F6E56}
+.confirm-modal-confirm.primary:hover{background:#085041}

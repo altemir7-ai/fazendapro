@@ -562,6 +562,18 @@
   </div>
 </div>
 
+<div id="confirm-modal-bg" class="confirm-modal-bg">
+  <div class="confirm-modal">
+    <div class="confirm-modal-icon" id="cm-icon">⚠️</div>
+    <div class="confirm-modal-title" id="cm-title">Confirmar ação</div>
+    <div class="confirm-modal-body" id="cm-body"></div>
+    <div class="confirm-modal-actions">
+      <button class="confirm-modal-cancel" onclick="Confirm.cancelar()">Cancelar</button>
+      <button class="confirm-modal-confirm" id="cm-btn" onclick="Confirm.executar()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <script src="/js/db.js"></script>
 <script src="/js/sync.js"></script>
 <script src="/js/app.js"></script>
