@@ -620,23 +620,70 @@ const App = (() => {
       const rows = await api('GET','/api/conferencias');
       const el = document.getElementById('conf-list-owner');
       if(!el) return;
-      el.innerHTML = rows.length ? rows.map(c=>`
-        <div class="list-item">
-          <div class="list-icon" style="background:${c.status==='finalizada'?'#d1fae5':'#fef3c7'}">${c.status==='finalizada'?'✅':'📋'}</div>
-          <div class="list-body">
-            <div class="list-title">Lote: ${c.lote} — ${fmtData(c.data)}</div>
-            <div class="list-sub">
-              <span class="badge b-green">${c.confirmados||c.total_presentes} presentes</span>
-              ${(c.ausentes||c.total_ausentes)>0?`<span class="badge b-red" style="margin-left:4px">${c.ausentes||c.total_ausentes} ausentes</span>`:''}
-              <span class="badge ${c.status==='finalizada'?'b-green':'b-amber'}" style="margin-left:4px">${c.status==='finalizada'?'Finalizada':'Em andamento'}</span>
+      if(!rows.length){
+        el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Nenhuma conferência realizada ainda.</div></div>';
+        return;
+      }
+      el.innerHTML = rows.map(c=>`
+        <div class="card" style="margin-bottom:.75rem;padding:1rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:6px">
+            <div>
+              <div style="font-size:14px;font-weight:700">Lote: ${c.lote} — ${fmtData(c.data)}</div>
+              <div style="font-size:12px;color:#888;margin-top:2px">Por: ${c.vaqueiro_nome||'Proprietário'}</div>
             </div>
-            <div class="list-sub">Por: ${c.vaqueiro_nome||'Proprietário'}</div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <span class="badge b-green">${c.confirmados||c.total_presentes} presentes</span>
+              ${(c.ausentes||c.total_ausentes)>0?`<span class="badge b-red">${c.ausentes||c.total_ausentes} ausentes</span>`:''}
+              <span class="badge ${c.status==='finalizada'?'b-teal':'b-amber'}">${c.status==='finalizada'?'Finalizada':'Em andamento'}</span>
+              ${c.status!=='finalizada'?`<button class="btn btn-sm btn-danger" onclick="deletarConferencia(${c.id})">×</button>`:''}
+            </div>
           </div>
-          ${c.status!=='finalizada'?`<button class="btn btn-sm btn-danger" onclick="deletarConferencia(${c.id})">×</button>`:''}
-        </div>`).join('') :
-        '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Nenhuma conferência realizada ainda.</div></div>';
+          <button class="btn btn-sm btn-outline" style="border-color:#0F6E56;color:#0F6E56;margin-bottom:.75rem" onclick="toggleAnimaisConferencia(${c.id},this)">Ver lista de animais ▼</button>
+          <div id="conf-animais-${c.id}" style="display:none"></div>
+        </div>`).join('');
     }catch(e){}
   }
+
+  window.toggleAnimaisConferencia = async(id, btn)=>{
+    const el = document.getElementById(`conf-animais-${id}`);
+    if(!el) return;
+    if(el.style.display !== 'none'){
+      el.style.display='none';
+      btn.textContent='Ver lista de animais ▼';
+      return;
+    }
+    btn.textContent='Fechar lista ▲';
+    el.style.display='block';
+    if(el.innerHTML) return; // já carregado
+    el.innerHTML='<div style="color:#888;font-size:13px;padding:.5rem">Carregando...</div>';
+    try{
+      const data = await api('GET',`/api/conferencias/${id}`);
+      if(!data.animais || !data.animais.length){
+        el.innerHTML='<div style="color:#888;font-size:13px;padding:.5rem">Nenhum animal registrado nesta conferência.</div>';
+        return;
+      }
+      const presentes = data.animais.filter(a=>a.status==='presente');
+      const ausentes  = data.animais.filter(a=>a.status==='ausente');
+      let html='';
+      if(presentes.length){
+        html+=`<div style="font-size:11px;font-weight:700;color:#065f46;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">✓ Presentes (${presentes.length})</div>`;
+        html+=presentes.map(a=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0ede8">
+            <div style="width:24px;height:24px;border-radius:50%;background:#d1fae5;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">✓</div>
+            <div style="font-size:13px;font-weight:600">${a.animal_brinco}${a.animal_nome?' — '+a.animal_nome:''}</div>
+          </div>`).join('');
+      }
+      if(ausentes.length){
+        html+=`<div style="font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:.04em;margin:10px 0 6px">✗ Ausentes (${ausentes.length})</div>`;
+        html+=ausentes.map(a=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0ede8">
+            <div style="width:24px;height:24px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">✗</div>
+            <div style="font-size:13px;font-weight:600">${a.animal_brinco}${a.animal_nome?' — '+a.animal_nome:''}</div>
+          </div>`).join('');
+      }
+      el.innerHTML=html;
+    }catch(e){el.innerHTML='<div style="color:#dc2626;font-size:13px">Erro ao carregar lista.</div>';}
+  };
 
   window.limparConferencias = ()=>{
     Confirm.mostrar({
@@ -689,27 +736,27 @@ const App = (() => {
   };
 
   async function carregarListaConferencia(){
+    const el = document.getElementById('conf-rebanho-lista');
+    if(!el) return;
+    el.innerHTML='<div style="text-align:center;padding:1rem;color:#888;font-size:13px">Carregando lista do rebanho...</div>';
     try{
-      const animais = await api('GET','/api/animais/lista').catch(()=>[]);
-      const el = document.getElementById('conf-rebanho-lista');
-      if(!el) return;
-      if(!animais.length){
+      const animais = await api('GET','/api/animais/lista');
+      if(!animais || !animais.length){
         el.innerHTML='<div class="empty" style="padding:1rem"><div class="empty-icon">🐄</div><div class="empty-text">Nenhum animal cadastrado ainda.<br>Cadastre animais primeiro.</div></div>';
         return;
       }
       el.innerHTML = animais.map(a=>`
         <div id="conf-item-${a.brinco}" onclick="registrarPelaLista('${a.brinco}','${(a.nome||'').replace(/'/g,"\\'")}',this)"
-          style="display:flex;align-items:center;gap:12px;padding:12px 8px;border-bottom:1px solid #f0ede8;cursor:pointer;transition:all .15s;border-radius:8px">
-          <div id="conf-status-${a.brinco}" style="width:36px;height:36px;border-radius:50%;background:#f5f4f0;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;transition:all .2s;border:2px solid #e8e6e0">○</div>
-          <div style="flex:1">
+          style="display:flex;align-items:center;gap:12px;padding:12px 8px;border-bottom:1px solid #f0ede8;cursor:pointer;transition:all .15s;border-radius:8px;-webkit-tap-highlight-color:rgba(0,0,0,.05)">
+          <div id="conf-status-${a.brinco}" style="width:38px;height:38px;border-radius:50%;background:#f5f4f0;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;transition:all .2s;border:2px solid #e8e6e0">○</div>
+          <div style="flex:1;min-width:0">
             <div style="font-size:15px;font-weight:700">${a.brinco}${a.nome?' — '+a.nome:''}</div>
             <div style="font-size:12px;color:#888">${a.categoria}${a.raca?' · '+a.raca:''}</div>
           </div>
-          <div id="conf-badge-${a.brinco}" style="font-size:12px;color:#aaa;font-weight:500">Pendente</div>
+          <div id="conf-badge-${a.brinco}" style="font-size:12px;color:#aaa;font-weight:500;flex-shrink:0">Pendente</div>
         </div>`).join('');
     }catch(e){
-      const el = document.getElementById('conf-rebanho-lista');
-      if(el) el.innerHTML='<div class="empty" style="padding:1rem"><div class="empty-text">Erro ao carregar lista.</div></div>';
+      el.innerHTML=`<div class="empty" style="padding:1rem"><div class="empty-icon">⚠️</div><div class="empty-text">Erro ao carregar lista: ${e.message}</div></div>`;
     }
   }
 
