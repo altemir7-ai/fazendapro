@@ -284,9 +284,29 @@ const App = (() => {
           <div class="list-sub">${fmtData(f.data)}${f.observacao?' · '+f.observacao:''}</div>
           <div class="list-sub">Por: ${f.vaqueiro_nome||'Proprietário'}</div>
         </div>
-        <div class="list-right"><div style="font-weight:700;color:${f.tipo==='entrada'?'#0F6E56':'#dc2626'}">${f.tipo==='entrada'?'+':'-'} R$ ${fmtBR(f.valor)}</div></div>
+        <div class="list-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <div style="font-weight:700;color:${f.tipo==='entrada'?'#0F6E56':'#dc2626'}">${f.tipo==='entrada'?'+':'-'} R$ ${fmtBR(f.valor)}</div>
+          <button class="btn btn-sm btn-danger" onclick="excluirLancamento(${f.id},'${f.categoria}',${f.valor},'${f.tipo}')">Excluir</button>
+        </div>
       </div>`).join(''):'<div class="empty"><div class="empty-icon">💵</div><div class="empty-text">Nenhum lançamento ainda.</div></div>';
   }
+
+  window.excluirLancamento = async(id, categoria, valor, tipo) => {
+    Confirm.mostrar({
+      icone: tipo==='entrada'?'📈':'📉',
+      titulo: 'Excluir lançamento',
+      corpo: `Deseja excluir este lançamento?<br><br>Categoria: <strong>${categoria}</strong><br>Valor: <strong>${tipo==='entrada'?'+':'-'} R$ ${fmtBR(valor)}</strong><br><br><span style="color:#dc2626">✗ Esta ação não pode ser desfeita.</span>`,
+      labelConfirmar: 'Excluir',
+      tipo: 'danger',
+      callback: async() => {
+        try {
+          await api('DELETE', `/api/financeiro/${id}`);
+          await loadFinanceiro();
+          toast('Lançamento excluído.');
+        } catch(e) { toast('Erro: '+e.message); }
+      }
+    });
+  };
 
   window.addFin=async()=>{
     const valor=parseFloat(document.getElementById('fin-valor').value);

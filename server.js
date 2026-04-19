@@ -345,6 +345,11 @@ app.get('/api/relatorio/csv/:tabela', authOwner, (req,res) => {
   res.send('\uFEFF'+headers+'\n'+lines.join('\n'));
 });
 
+app.delete('/api/financeiro/:id', authOwner, (req,res) => {
+  db.prepare('DELETE FROM financeiro WHERE id = ?').run(req.params.id);
+  res.json({ok:true});
+});
+
 // ── CONFERÊNCIA DO GADO ───────────────────────────
 app.get('/api/conferencias', authAny, (req,res) => {
   res.json(db.prepare(`
